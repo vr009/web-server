@@ -2,7 +2,7 @@
 
 ## Motivation
 
-This an educational project for getting experience on createng such applications.
+This an educational project for getting experience on creating such applications.
 
 ## Architcture
 
