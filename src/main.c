@@ -13,7 +13,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-#include "../libev/ev.h"
+#include "ev.h"
 
 /* client number limitation */
 #define MAX_CLIENTS 1000
