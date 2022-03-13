@@ -13,11 +13,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-#include "ev.h"
-
-
-
-#include <ev.h>
+#include "../libev/ev.h"
 
 /* client number limitation */
 #define MAX_CLIENTS 1000
@@ -110,7 +106,7 @@ static void start_server(char const *addr, uint16_t u16port)
 	fd = create_serverfd(addr, u16port);
 	loop = ev_default_loop(EVFLAG_NOENV);
 	watcher = calloc(1, sizeof(*watcher));
-	assert(("can not alloc memory\n", loop && watcher));
+//	assert(("can not alloc memory\n", loop && watcher));
 
 	/* set nonblock flag */
 	fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
@@ -153,21 +149,6 @@ int fork_workers(int cpu_count, int * workers_pids) {
 
 int main() {
 	int port = 80;
-	int sd = socket(PF_INET, SOCK_STREAM, 0);
-	if (sd == -1) {
-		return -1;
-	}
-
-	struct sockaddr_in serv_addr;
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	serv_addr.sin_port = htons(port);
-	int n = bind(sd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
-	if (n == -1) {
-		return -1;
-	}
-
-	listen(sd, 100);
 
 	int ncpus ;
 	ncpus = sysconf(_SC_NPROCESSORS_CONF);
@@ -179,7 +160,25 @@ int main() {
 	}
 
 	signal(SIGPIPE, signal_handler);
-	start_server("127.0.0.1", 10009);
+	start_server("127.0.0.1", port);
 
 	return 0;
+}
+
+void helper() {
+	//	int sd = socket(PF_INET, SOCK_STREAM, 0);
+//	if (sd == -1) {
+//		return -1;
+//	}
+//
+//	struct sockaddr_in serv_addr;
+//	serv_addr.sin_family = AF_INET;
+//	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+//	serv_addr.sin_port = htons(port);
+//	int n = bind(sd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+//	if (n == -1) {
+//		return -1;
+//	}
+//
+//	listen(sd, 100);
 }
