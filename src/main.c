@@ -1,4 +1,3 @@
-#include "main.h"
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -104,9 +103,11 @@ static void start_server(char const *addr, uint16_t u16port)
 	ev_io *watcher;
 
 	fd = create_serverfd(addr, u16port);
-	loop = ev_default_loop(EVFLAG_NOENV);
+//	loop = ev_default_loop(EVFLAG_NOENV);
+	loop = ev_loop_new(EVFLAG_NOENV);
 	watcher = calloc(1, sizeof(*watcher));
-//	assert(("can not alloc memory\n", loop && watcher));
+	printf("here: %p , %p", loop, watcher);
+	assert(("can not alloc memory\n", loop && watcher));
 
 	/* set nonblock flag */
 	fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
@@ -148,16 +149,16 @@ int fork_workers(int cpu_count, int * workers_pids) {
 }
 
 int main() {
-	int port = 80;
+	int port = 8084;
 
-	int ncpus ;
-	ncpus = sysconf(_SC_NPROCESSORS_CONF);
-	printf("cpus: %d\n", ncpus);
-	workers_pids = (int*)calloc(ncpus, sizeof(int));
-	int res = fork_workers(ncpus, workers_pids);
-	if (res == -1) {
-		return res;
-	}
+//	int ncpus ;
+//	ncpus = sysconf(_SC_NPROCESSORS_CONF);
+//	printf("cpus: %d\n", ncpus);
+//	workers_pids = (int*)calloc(ncpus, sizeof(int));
+//	int res = fork_workers(ncpus, workers_pids);
+//	if (res == -1) {
+//		return res;
+//	}
 
 	signal(SIGPIPE, signal_handler);
 	start_server("127.0.0.1", port);
