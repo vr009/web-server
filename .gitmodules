@@ -1,3 +1,6 @@
 [submodule "libev"]
 	path = libev
 	url = https://github.com/enki/libev
+[submodule "libev-cmake"]
+	path = libev-cmake
+	url = https://github.com/mksdev/libev-cmake

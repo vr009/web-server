@@ -16,11 +16,13 @@ set (EV_SRC
         libev/event.c
 )
 
-add_library(ev ${EV_SRC})
-target_link_libraries (ev ${EV_LIBS})
-target_include_directories(ev PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
-target_include_directories(ev PUBLIC libev)
+add_subdirectory(libev-cmake)
 
-add_library(ev::ev ALIAS ev)
+#add_library(ev ${EV_SRC})
+#target_link_libraries (ev ${EV_LIBS})
+#target_include_directories(ev PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+#target_include_directories(ev PUBLIC libev)
+#
+#add_library(ev::ev ALIAS ev)
 
 target_link_libraries(main ev)

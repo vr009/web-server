@@ -103,8 +103,7 @@ static void start_server(char const *addr, uint16_t u16port)
 	ev_io *watcher;
 
 	fd = create_serverfd(addr, u16port);
-//	loop = ev_default_loop(EVFLAG_NOENV);
-	loop = ev_loop_new(EVFLAG_NOENV);
+	loop = ev_default_loop(0);
 	watcher = calloc(1, sizeof(*watcher));
 	printf("here: %p , %p", loop, watcher);
 	assert(("can not alloc memory\n", loop && watcher));
