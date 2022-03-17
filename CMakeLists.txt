@@ -2,10 +2,10 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.9)
 
 project(web_server)
 
-set(SOURCE queue/queue.c)
-set(HEADER queue/queue.h)
+set(SOURCE http/http.c)
+set(HEADER http/http.h)
 
-ADD_EXECUTABLE(main src/main.c)
+ADD_EXECUTABLE(main src/main.c http/http.c disc/disk.c)
 
 include_directories (libev)
 
@@ -17,12 +17,4 @@ set (EV_SRC
 )
 
 add_subdirectory(libev-cmake)
-
-#add_library(ev ${EV_SRC})
-#target_link_libraries (ev ${EV_LIBS})
-#target_include_directories(ev PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
-#target_include_directories(ev PUBLIC libev)
-#
-#add_library(ev::ev ALIAS ev)
-
 target_link_libraries(main ev)
