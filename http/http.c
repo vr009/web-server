@@ -319,8 +319,11 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 
 		define_content_type(req, resp);
 		send_headers(sock_d, resp);
-
+#ifdef __linux__
+		snedfile(sock_d, fd, 0, statistics.st_size);
+#elif __APPLE__
 		sendfile(sock_d, fd, 0, &statistics.st_size, NULL,  0);
+#endif
 	} else {
 		send_headers(sock_d, resp);
 	}
