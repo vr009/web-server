@@ -321,9 +321,9 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 		send_headers(sock_d, resp);
 		if (req->req_method == GET) {
 #ifdef __linux__
-		sendfile(fd, sock_d, 0, statistics.st_size);
+			sendfile(fd, sock_d, 0, statistics.st_size);
 #elif __APPLE__
-		sendfile(fd, sock_d, 0, &statistics.st_size, NULL,  0);
+			sendfile(fd, sock_d, 0, &statistics.st_size, NULL,  0);
 #endif
 		}
 	} else {
