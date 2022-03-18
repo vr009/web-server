@@ -1,7 +1,7 @@
 FROM ubuntu as build
 
 RUN apt-get update && \
-    apt-get install -y gcc make cmake
+    apt-get install -y git gcc make cmake
 
 ADD . .
 
