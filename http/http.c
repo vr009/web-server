@@ -121,7 +121,7 @@ size_t parse_url(char * buf, size_t pos, http_request * req) {
 	}
 	if (buf[url_sz-1] == '/') {
 		req->url = calloc(url_sz - pos + strlen("index.html")+1, sizeof(char));
-		strncpy(req->url, buf+pos, url_sz-pos);
+		strncpy(req->url, buf+pos+1, url_sz-pos-1);
 		strcat(req->url, "index.html");
 	} else {
 		req->url = calloc(url_sz-pos+1, sizeof(char));
@@ -274,7 +274,7 @@ void send_headers(int sock_d, http_response * resp) {
 	char * template = "%s %d %s\r\nDate: %s\r\nServer: web\r\nContent-Length: %d\r\nContent-Type: %s\r\nConnection: %s\r\n\r\n";
 
 	char version[9] = "HTTP/1.0";
-	char answer_msg[10] = "OK";
+	char answer_msg[19] = "OK";
 
 	if (resp->version == VER_1_1) {
 		version[7] = '1';
@@ -284,6 +284,9 @@ void send_headers(int sock_d, http_response * resp) {
 	}
 	if (resp->code == 403) {
 		strcpy(answer_msg, "FORBIDDEN");
+	}
+	if (resp->code == 405) {
+		strcpy(answer_msg, "METHOD NOT ALLOWED");
 	}
 	sprintf(buf, template, version, resp->code, answer_msg, resp->date, resp->content_length, resp->content_type, "Closed");
 	send_all(sock_d, buf);
