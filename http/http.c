@@ -154,12 +154,12 @@ size_t parse_version(char * buf, size_t pos, http_request * req) {
 }
 
 size_t parse_host(char * buf, size_t pos, http_request * req) {
-	while (!(buf[pos] == 'H' && buf[pos+1] == 'o' && buf[pos+2] == 's' && buf[pos+3] == 't')) {
+	while (pos + 3 < strlen(buf) && !(buf[pos] == 'H' && buf[pos+1] == 'o' && buf[pos+2] == 's' && buf[pos+3] == 't')) {
 		pos++;
 	}
 	pos += strlen("Host: ");
 	size_t pos_end = pos;
-	while (buf[pos_end] != '\r') {
+	while (pos_end < strlen(buf) && buf[pos_end] != '\r') {
 		pos_end++;
 	}
 	if (req->host != NULL) {
@@ -255,7 +255,7 @@ void define_date(http_response * resp) {
 
 //	sprintf(resp->date,"%a, %d %b %Y %H:%M:%S GMT", m_time.tm_wday, m_time.tm_mday,
 //			m_time.tm_mon, m_time.tm_year, m_time.tm_hour, m_time.tm_min, m_time.tm_sec);
-	sprintf(resp->date, "%s", asctime_r(&m_time, buf));
+	sprintf(resp->date, "%s GMT", asctime_r(&m_time, buf));
 }
 
 void send_all(int sock_d, char * msg) {
@@ -270,8 +270,8 @@ void send_all(int sock_d, char * msg) {
 void send_headers(int sock_d, http_response * resp) {
 	size_t msg_len = strlen(t);
 	define_date(resp);
-	char * buf = calloc(msg_len, sizeof(char));
-	char * template = "%s %d %s\r\nDate: %s\r\nServer: web\r\nContent-Length: %d\r\nContent-Type: %s\r\nConnection: %s\r\n\r\n";
+	char * buf = calloc(msg_len*2, sizeof(char));
+	char * template = "%s %d %s\r\nDate: %sServer: web\r\nContent-Length: %d\r\nContent-Type: %s\r\nConnection: %s\r\n\r\n";
 
 	char version[9] = "HTTP/1.0";
 	char answer_msg[10] = "OK";
@@ -319,11 +319,13 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 
 		define_content_type(req, resp);
 		send_headers(sock_d, resp);
+		if (req->req_method == GET) {
 #ifdef __linux__
-		sendfile(sock_d, fd, 0, statistics.st_size);
+		sendfile(fd, sock_d, 0, statistics.st_size);
 #elif __APPLE__
-		sendfile(sock_d, fd, 0, &statistics.st_size, NULL,  0);
+		sendfile(fd, sock_d, 0, &statistics.st_size, NULL,  0);
 #endif
+		}
 	} else {
 		send_headers(sock_d, resp);
 	}
