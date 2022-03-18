@@ -87,7 +87,7 @@ void http_response_free(http_response * resp) {
 
 size_t parse_method(char * buf, http_request * req) {
 	size_t cursor = 0;
-	char method_str[strlen("DELETE")] = {};
+	char method_str[strlen("DELETE")];
 	while (buf[cursor] != ' ' && cursor < strlen("DELETE")) {
 		cursor++;
 	}
