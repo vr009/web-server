@@ -343,7 +343,13 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 
 void test_cb(int sd) {
 	struct config cfg;
+
+#ifdef __linux__
+	cfg.root_path = "/home/ubuntu/temp";
+#elif __APPLE__
 	cfg.root_path = "/Users/v.rianov/temp";
+#endif
+//	cfg.root_path = "/Users/v.rianov/temp";
 	cfg.file_name = "index.html";
 
 	struct http_request * req = (http_request*)malloc(sizeof(http_request));
