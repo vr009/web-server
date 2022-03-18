@@ -271,7 +271,7 @@ void send_headers(int sock_d, http_response * resp) {
 	size_t msg_len = strlen(t);
 	define_date(resp);
 	char * buf = calloc(msg_len*2, sizeof(char));
-	char * template = "%s %d %s\r\nDate: %sServer: web\r\nContent-Length: %d\r\nContent-Type: %s\r\nConnection: %s\r\n\r\n";
+	char * template = "%s %d %s\r\nDate: %s\r\nServer: web\r\nContent-Length: %d\r\nContent-Type: %s\r\nConnection: %s\r\n\r\n";
 
 	char version[9] = "HTTP/1.0";
 	char answer_msg[10] = "OK";
