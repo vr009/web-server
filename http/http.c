@@ -67,7 +67,7 @@ void response_init(http_response * resp) {
 void http_request_free(http_request * req) {
 	if (req->url) free(req->url);
 	if (req->host) free(req->host);
-	if (req->buf) free(req->buf);
+	if (req->buf && strcmp(req->buf, "")) free(req->buf);
 	if (req->body) free(req->body);
 	if (req->params != NULL && *req->params) free(*req->params);
 	if (req->params) free(req->params);
@@ -363,22 +363,36 @@ void test_cb(int sd, char * root_path) {
 
 	char * buf = calloc(1000, sizeof(char));
 	char * tmp_buf = calloc(125, sizeof(char));
-	int rcvd = recv(sd, tmp_buf, sizeof(tmp_buf) - 1, MSG_DONTWAIT);
-	buf = strcat(buf, tmp_buf);
+	int rcvd = 0;
 	while(buf[rcvd] != '\n') {
-		rcvd += recv(sd, tmp_buf, sizeof(tmp_buf) - 1, MSG_DONTWAIT);
-		if (rcvd < strlen(buf)) { buf = strcat(buf, tmp_buf); }
+		int rvd = recv(sd, tmp_buf, sizeof(tmp_buf) - 1, MSG_DONTWAIT);
+		if (rvd == 0)
+			break;
+		if (rvd != -1) {
+			rcvd += rvd;
+			buf = strcat(buf, tmp_buf);
+			memset(tmp_buf, 0, strlen(tmp_buf));
+		}
+		if (rvd == -1 && errno != EAGAIN) {
+			free(buf);
+			free(tmp_buf);
+			http_request_free(req);
+			http_response_free(resp);
+			return;
+		} else if (rvd == -1) {
+			break;
+		}
 	}
 
 	parse_request(buf, req);
-	if (req->url == NULL) {
+	if (req->url == NULL || strcmp(req->url, "") == 0) {
+		free(tmp_buf);
 		http_request_free(req);
 		http_response_free(resp);
 		return;
 	}
 	send_response(sd, req, resp, &cfg);
 
-	free(buf);
 	free(tmp_buf);
 	http_request_free(req);
 	http_response_free(resp);
