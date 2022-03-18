@@ -37,7 +37,8 @@ static int create_serverfd(char const *addr, uint16_t u16port)
 
 	server.sin_family = AF_INET;
 	server.sin_port = htons(u16port);
-	inet_pton(AF_INET, addr, &server.sin_addr);
+//	inet_pton(AF_INET, addr, &server.sin_addr);
+	server.sin_addr.s_addr = htonl(INADDR_ANY);
 
 	if (bind(fd, (struct sockaddr *)&server, sizeof(server)) < 0) err_message("bind err\n");
 
@@ -165,7 +166,7 @@ int main() {
 //	}
 
 	signal(SIGPIPE, signal_handler);
-	start_server("127.0.0.1", port);
+	start_server("0.0.0.0", port);
 
 	return 0;
 }

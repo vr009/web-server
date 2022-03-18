@@ -6,6 +6,8 @@
 #include <sys/errno.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <fcntl.h>
+
 
 enum REQUEST_METHOD {
 	GET = 0,
