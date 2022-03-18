@@ -5,7 +5,7 @@ RUN apt-get update && \
 
 ADD . .
 
-RUN chmod +x build.sh
+RUN chmod +x build.sh && ./build.sh
 
 WORKDIR /build
 
