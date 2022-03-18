@@ -321,10 +321,10 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 		send_headers(sock_d, resp);
 		if (req->req_method == GET) {
 			size_t sent = 0;
-			while (sent != statistics.st_size) {
-#ifdef __linux__
+			while (sent <= statistics.st_size) {
+#ifdef defined(__linux__)
 				sent += sendfile(sock_d, fd, 0, statistics.st_size);
-#elif __APPLE__
+#elif defined(__APPLE__)
 				sent += sendfile(fd, sock_d, 0, &statistics.st_size, NULL,  0);
 #endif
 			}
@@ -344,9 +344,9 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 void test_cb(int sd) {
 	struct config cfg;
 
-#ifdef __linux__
+#if defined(__linux__)
 	cfg.root_path = "/home/ubuntu/temp";
-#elif __APPLE__
+#elif defined(__APPLE__) && defined(__MACH__)
 	cfg.root_path = "/Users/v.rianov/temp";
 #endif
 //	cfg.root_path = "/Users/v.rianov/temp";
