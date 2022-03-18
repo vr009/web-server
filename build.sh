@@ -1,7 +1,5 @@
 git submodule init &&
 git submodule update --recursive &&
 git submodule add https://github.com/mksdev/libev-cmake &&
-cd libev-cmake && rm .gitmodules &&
-git submodule add https://github.com/enki/libev &&
-cd .. &&
+mv cmake/CMakeLists.txt libev-cmake/CMakeLists.txt &&
 mkdir build && cd build && cmake .. && make
