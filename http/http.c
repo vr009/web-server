@@ -1,4 +1,5 @@
 #include "http.h"
+#include "../URLDecode/urldecode.h"
 #include <string.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -113,7 +114,7 @@ size_t parse_method(char * buf, http_request * req) {
 
 size_t parse_url(char * buf, size_t pos, http_request * req) {
 	size_t url_sz = pos+1;
-	while (buf[url_sz] != ' ' && buf[url_sz] != 'H' && buf[url_sz] != '\n') {
+	while (buf[url_sz] != ' ' && buf[url_sz] != 'H' && buf[url_sz] != '\n' && buf[url_sz] != '\?') {
 		url_sz++;
 	}
 	if (req->url != NULL) {
@@ -295,93 +296,8 @@ void send_headers(int sock_d, http_response * resp) {
 	send_all(sock_d, buf);
 }
 
-//void recv_http_request(int sock_d, char * buf) {
-//}
-
-void change_str(size_t pos, char * buf) {
-	if (buf[pos] == '%' && pos + 2 < strlen(buf)) {
-		char * new_buf = calloc(sizeof(buf) + 2, sizeof(char));
-		strncpy(new_buf, buf, pos);
-		if (buf[pos+1] == '3' && buf[pos+2] == 'A') {
-			new_buf[pos] = ':';
-		}
-		else if (buf[pos+1] == '2' && buf[pos+2] == 'F') {
-			new_buf[pos] = '/';
-		}
-		else if (buf[pos+1] == '3' && buf[pos+2] == 'F') {
-			new_buf[pos] = '?';
-		}
-		else if (buf[pos+1] == '2' && buf[pos+2] == '3') {
-			new_buf[pos] = '#';
-		}
-		else if (buf[pos+1] == '5' && buf[pos+2] == 'B') {
-			new_buf[pos] = '[';
-		}
-		else if (buf[pos+1] == '5' && buf[pos+2] == 'D') {
-			new_buf[pos] = ']';
-		}
-		else if (buf[pos+1] == '4' && buf[pos+2] == '0') {
-			new_buf[pos] = '@';
-		}
-		else if (buf[pos+1] == '2' && buf[pos+2] == '1') {
-			new_buf[pos] = '!';
-		}
-		else if (buf[pos+1] == '2' && buf[pos+2] == '4') {
-			new_buf[pos] = '$';
-		}
-		else if (buf[pos+1] == '2' && buf[pos+2] == '6') {
-			new_buf[pos] = '&';
-		}
-		else if (buf[pos+1] == '2' && buf[pos+2] == '7') {
-			new_buf[pos] = '\'';
-		}
-		else if (buf[pos+1] == '2' && buf[pos+2] == '8') {
-			new_buf[pos] = '(';
-		}
-		else if (buf[pos+1] == '2' && buf[pos+2] == '9') {
-			new_buf[pos] = ')';
-		}
-		else if (buf[pos+1] == '2' && buf[pos+2] == 'A') {
-			new_buf[pos] = '*';
-		}
-		else if (buf[pos+1] == '2' && buf[pos+2] == 'B') {
-			new_buf[pos] = '+';
-		}
-		else if (buf[pos+1] == '2' && buf[pos+2] == 'C') {
-			new_buf[pos] = ',';
-		}
-		else if (buf[pos+1] == '3' && buf[pos+2] == 'B') {
-			new_buf[pos] = ';';
-		}
-		else if (buf[pos+1] == '3' && buf[pos+2] == 'D') {
-			new_buf[pos] = '=';
-		}
-		else if (buf[pos+1] == '2' && buf[pos+2] == '5') {
-			new_buf[pos] = '%';
-		}
-		else if (buf[pos+1] == '2' && buf[pos+2] == '0') {
-			new_buf[pos] = ' ';
-		}
-		else if (buf[pos+1] == '+') {
-			new_buf[pos] = ' ';
-			new_buf = strcat(new_buf, buf+pos+1);
-			free(buf);
-			buf = new_buf;
-			return;
-		}
-		new_buf = strcat(new_buf, buf+pos+3);
-		free(buf);
-		buf = new_buf;
-	}
-}
-
 void perform_url(http_request* req) {
-	for (int i = 0; i < strlen(req->url); i++) {
-		if (req->url[i] == '%') {
-			change_str(i, req->url);
-			i -= 3;
-		}
-	}
+	req->url = urlDecode(req->url);
 }
 
 void send_response(int sock_d, http_request* req, http_response * resp, struct config * cfg) {
@@ -423,8 +339,8 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 	}
 
 
-	char end[4] = {'\r', '\n', '\r', '\n'};
-	send(sock_d, end, 4, 0);
+//	char end[4] = {'\r', '\n', '\r', '\n'};
+//	send(sock_d, end, 4, 0);
 
 	free(file_abs_path);
 	if (f!= NULL){ fclose(f); }
@@ -451,12 +367,19 @@ void test_cb(int sd, char * root_path) {
 	buf = strcat(buf, tmp_buf);
 	while(buf[rcvd] != '\n') {
 		rcvd += recv(sd, tmp_buf, sizeof(tmp_buf) - 1, MSG_DONTWAIT);
-		buf = strcat(buf, tmp_buf);
+		if (rcvd < strlen(buf)) { buf = strcat(buf, tmp_buf); }
 	}
 
 	parse_request(buf, req);
+	if (req->url == NULL) {
+		http_request_free(req);
+		http_response_free(resp);
+		return;
+	}
 	send_response(sd, req, resp, &cfg);
 
+	free(buf);
+	free(tmp_buf);
 	http_request_free(req);
 	http_response_free(resp);
 }

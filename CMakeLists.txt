@@ -5,7 +5,7 @@ project(web_server)
 set(SOURCE http/http.c)
 set(HEADER http/http.h)
 
-ADD_EXECUTABLE(main src/main.c http/http.c config_parser/config_parser.c)
+ADD_EXECUTABLE(main src/main.c http/http.c config_parser/config_parser.c URLDecode/urldecode.c)
 
 include_directories (libev)
 

@@ -1,11 +1,11 @@
 FROM ubuntu as build
 
 RUN apt-get update && \
-    apt-get install -y --assume-yes git gcc make cmake
+    apt-get install -y cmake
 
 ADD . .
 
-RUN chmod +x build.sh && ./build.sh
+RUN chmod +x build.sh
 
 WORKDIR /build
 
