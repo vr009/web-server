@@ -1,9 +1,7 @@
 #include "http.h"
 #include <string.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
 #include <stdio.h>
 #include <sys/errno.h>
 #include <sys/stat.h>
@@ -68,7 +66,7 @@ void http_request_free(http_request * req) {
 	if (req->host) free(req->host);
 	if (req->buf) free(req->buf);
 	if (req->body) free(req->body);
-	if (*req->params) free(*req->params);
+	if (req->params != NULL && *req->params) free(*req->params);
 	if (req->params) free(req->params);
 	if (req) free(req);
 }
@@ -93,7 +91,7 @@ size_t parse_method(char * buf, http_request * req) {
 	}
 
 	if (cursor < strlen("DELETE"))
-		stpncpy(method_str,buf,cursor);
+		strncpy(method_str,buf,cursor);
 	else
 		return 0;
 
@@ -107,13 +105,12 @@ size_t parse_method(char * buf, http_request * req) {
 		req->req_method = HEAD;
 	if (strcmp(method_str, "DELETE") == 0)
 		req->req_method = DELETE;
-	else
-		cursor = 0;
+
 	return cursor;
 }
 
 size_t parse_url(char * buf, size_t pos, http_request * req) {
-	size_t url_sz = pos;
+	size_t url_sz = pos+1;
 	while (buf[url_sz] != ' ' && buf[url_sz] != 'H' && buf[url_sz] != '\n') {
 		url_sz++;
 	}
@@ -126,9 +123,9 @@ size_t parse_url(char * buf, size_t pos, http_request * req) {
 		strcat(req->url, "index.html");
 	} else {
 		req->url = calloc(url_sz-pos+1, sizeof(char));
-		strncpy(req->url, buf+pos, url_sz-pos);
+		strncpy(req->url, buf+pos+1, url_sz-pos-1);
 	}
-	return pos + url_sz;
+	return url_sz;
 }
 
 size_t parse_version(char * buf, size_t pos, http_request * req) {
@@ -142,9 +139,9 @@ size_t parse_version(char * buf, size_t pos, http_request * req) {
 	while (buf[pos_end] != '\r') {
 		pos_end++;
 	}
-	if (pos_end - pos) {
-		return 0;
-	}
+//	if (pos_end - pos) {
+//		return 0;
+//	}
 
 	if ((buf[pos + 1] = '1') && (buf[pos_end - 1] == '1')) {
 		req->version = VER_1_1;
@@ -155,12 +152,12 @@ size_t parse_version(char * buf, size_t pos, http_request * req) {
 }
 
 size_t parse_host(char * buf, size_t pos, http_request * req) {
-	while (buf[pos] != 'H' && buf[pos+1] != 'o' && buf[pos+2] != 's' && buf[pos+3] != 't') {
+	while (!(buf[pos] == 'H' && buf[pos+1] == 'o' && buf[pos+2] == 's' && buf[pos+3] == 't')) {
 		pos++;
 	}
 	pos += strlen("Host: ");
 	size_t pos_end = pos;
-	while (buf[pos_end] != ' ') {
+	while (buf[pos_end] != '\r') {
 		pos_end++;
 	}
 	if (req->host != NULL) {
@@ -192,8 +189,8 @@ void parse_request(char * buf, http_request * req) {
 	// the rest goes to buf :)
 	if (req->buf != NULL) {
 		free(req->buf);
-		req->buf = buf;
 	}
+	req->buf = buf;
 }
 
 void define_content_type(http_request * req, http_response * resp) {
@@ -202,35 +199,43 @@ void define_content_type(http_request * req, http_response * resp) {
 		pos--;
 	}
 	if (req->url[pos+1] == 'h' && req->url[pos+2] == 't' && req->url[pos+3] == 'm') {
-		resp->content_type = calloc(strlen("test/html") + 1, sizeof(char));
+		resp->content_type = calloc(strlen("text/html") + 1, sizeof(char));
+		resp->content_type = strcpy(resp->content_type, "text/html");
 		return;
 	}
 	if (req->url[pos+1] == 'c' && req->url[pos+2] == 's' && req->url[pos+3] == 's') {
-		resp->content_type = calloc(strlen("test/css") + 1, sizeof(char));
+		resp->content_type = calloc(strlen("text/css") + 1, sizeof(char));
+		resp->content_type = strcpy(resp->content_type, "text/css");
 		return;
 	}
 	if (req->url[pos+1] == 'j' && req->url[pos+2] == 's') {
 		resp->content_type = calloc(strlen("application/javascript") + 1, sizeof(char));
+		resp->content_type = strcpy(resp->content_type, "application/javascript");
 		return;
 	}
 	if (req->url[pos+1] == 'j' && req->url[pos+2] == 'p' && req->url[pos+3] == 'g') {
 		resp->content_type = calloc(strlen("image/jpeg") + 1, sizeof(char));
+		resp->content_type = strcpy(resp->content_type, "image/jpeg");
 		return;
 	}
 	if (req->url[pos+1] == 'j' && req->url[pos+2] == 'p' && req->url[pos+3] == 'e') {
 		resp->content_type = calloc(strlen("image/jpeg") + 1, sizeof(char));
+		resp->content_type = strcpy(resp->content_type, "image/jpeg");
 		return;
 	}
 	if (req->url[pos+1] == 'p' && req->url[pos+2] == 'n' && req->url[pos+3] == 'g') {
 		resp->content_type = calloc(strlen("image/png") + 1, sizeof(char));
+		resp->content_type = strcpy(resp->content_type, "image/png");
 		return;
 	}
 	if (req->url[pos+1] == 'g' && req->url[pos+2] == 'i' && req->url[pos+3] == 'f') {
 		resp->content_type = calloc(strlen("image/gif") + 1, sizeof(char));
+		resp->content_type = strcpy(resp->content_type, "image/gif");
 		return;
 	}
 	if (req->url[pos+1] == 's' && req->url[pos+2] == 'w' && req->url[pos+3] == 'f') {
 		resp->content_type = calloc(strlen("application/x-shockwave-flash") + 1, sizeof(char));
+		resp->content_type = strcpy(resp->content_type, "application/x-shockwave-flash");
 		return;
 	}
 }
@@ -241,13 +246,14 @@ void define_date(http_response * resp) {
 	struct tm m_time;
 
 	s_time = time (NULL);
-
+	char buf[26] = "";
 	localtime_r (&s_time, &m_time);
 
 	resp->date = calloc(sizeof("Mon, 27 Jul 2009 12:28:53 GMT"), sizeof(char));
 
-	sprintf(resp->date,"%a, %d %b %Y %H:%M:%S GMT", m_time.tm_wday, m_time.tm_mday,
-			m_time.tm_mon, m_time.tm_year, m_time.tm_hour, m_time.tm_min, m_time.tm_sec);
+//	sprintf(resp->date,"%a, %d %b %Y %H:%M:%S GMT", m_time.tm_wday, m_time.tm_mday,
+//			m_time.tm_mon, m_time.tm_year, m_time.tm_hour, m_time.tm_min, m_time.tm_sec);
+	sprintf(resp->date, "%s", asctime_r(&m_time, buf));
 }
 
 void send_all(int sock_d, char * msg) {
@@ -261,6 +267,7 @@ void send_all(int sock_d, char * msg) {
 
 void send_headers(int sock_d, http_response * resp) {
 	size_t msg_len = strlen(t);
+	define_date(resp);
 	char * buf = calloc(msg_len, sizeof(char));
 	char * template = "%s %d %s\r\nDate: %s\r\nServer: web\r\nContent-Length: %d\r\nContent-Type: %s\r\nConnection: %s\r\n\r\n";
 
@@ -288,9 +295,9 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 	file_abs_path = strcat(file_abs_path, cfg->root_path);
 	file_abs_path = strcat(file_abs_path, req->url);
 
-	FILE * f = fopen(file_abs_path, "r");
+	FILE * f = fopen(file_abs_path, "r+");
 	if (f == NULL) {
-		if (errno = EACCES)
+		if (errno == EACCES)
 			resp->code = 403; // 403 ?
 		else
 			resp->code = 404;
@@ -300,21 +307,54 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 		resp->code = 200;
 	}
 
-	struct stat statistics;
-	int fd = fileno(f);
+	if (resp->code == 200) {
+		struct stat statistics;
+		int fd = fileno(f);
 
-	if (fstat(fd, &statistics) != -1) {
-		resp->content_length = statistics.st_size;
+		if (fstat(fd, &statistics) != -1) {
+			resp->content_length = statistics.st_size;
+		}
+
+		define_content_type(req, resp);
+		send_headers(sock_d, resp);
+
+		sendfile(sock_d, fd, 0, &statistics.st_size, NULL,  0);
+	} else {
+		send_headers(sock_d, resp);
 	}
 
-	define_content_type(req, resp);
-
-	send_headers(sock_d, resp);
-
-	sendfile(sock_d, fd, 0, NULL, NULL,  statistics.st_size);
 
 	char end[4] = {'\r', '\n', '\r', '\n'};
 	send(sock_d, end, 4, 0);
 
 	free(file_abs_path);
+	if (f!= NULL){ fclose(f); }
+}
+
+void test_cb(int sd) {
+	struct config cfg;
+	cfg.root_path = "/Users/v.rianov/temp";
+	cfg.file_name = "index.html";
+
+	struct http_request * req = (http_request*)malloc(sizeof(http_request));
+	req->url = req->host = req->buf = req->body = req->params = NULL;
+	struct http_response * resp = (http_response*) malloc(sizeof(http_response));
+	resp->content_type = resp->date = resp->body = resp->server = resp->file_path = resp->connection = resp->additional_headers = NULL;
+//	request_init(req);
+//	response_init(resp);
+
+	char * buf = calloc(1000, sizeof(char));
+	char * tmp_buf = calloc(125, sizeof(char));
+	int rcvd = recv(sd, tmp_buf, sizeof(tmp_buf) - 1, MSG_DONTWAIT);
+	buf = strcat(buf, tmp_buf);
+	while(buf[rcvd] != '\n') {
+		rcvd += recv(sd, tmp_buf, sizeof(tmp_buf) - 1, MSG_DONTWAIT);
+		buf = strcat(buf, tmp_buf);
+	}
+
+	parse_request(buf, req);
+	send_response(sd, req, resp, &cfg);
+
+	http_request_free(req);
+	http_response_free(resp);
 }

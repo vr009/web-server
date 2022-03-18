@@ -13,6 +13,7 @@
 #include <arpa/inet.h>
 
 #include "ev.h"
+#include "../http/http.h"
 
 /* client number limitation */
 #define MAX_CLIENTS 1000
@@ -47,23 +48,27 @@ static int create_serverfd(char const *addr, uint16_t u16port)
 
 static void read_cb(EV_P_ ev_io *watcher, int revents)
 {
-	ssize_t ret;
-	char buf[MAX_MESSAGE_LEN] = {0};
-
-	ret = recv(watcher->fd, buf, sizeof(buf) - 1, MSG_DONTWAIT);
-	if (ret > 0) {
-		write(watcher->fd, buf, ret);
-
-	} else if ((ret < 0) && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-		return;
-
-	} else {
-		fprintf(stdout, "client closed (fd=%d)\n", watcher->fd);
-		--client_number;
-		ev_io_stop(EV_A_ watcher);
-		close(watcher->fd);
-		free(watcher);
-	}
+	test_cb(watcher->fd);
+	ev_io_stop(EV_A_ watcher);
+	close(watcher->fd);
+	free(watcher);
+//	ssize_t ret;
+//	char buf[MAX_MESSAGE_LEN] = {0};
+//
+//	ret = recv(watcher->fd, buf, sizeof(buf) - 1, MSG_DONTWAIT);
+//	if (ret > 0) {
+//		write(watcher->fd, buf, ret);
+//
+//	} else if ((ret < 0) && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+//		return;
+//
+//	} else {
+//		fprintf(stdout, "client closed (fd=%d)\n", watcher->fd);
+//		--client_number;
+//		ev_io_stop(EV_A_ watcher);
+//		close(watcher->fd);
+//		free(watcher);
+//	}
 }
 
 static void accept_cb(EV_P_ ev_io *watcher, int revents)
