@@ -323,7 +323,7 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 			size_t sent = 0;
 			while (sent != statistics.st_size) {
 #ifdef __linux__
-				sent += sendfile(fd, sock_d, 0, statistics.st_size);
+				sent += sendfile(sock_d, fd, 0, statistics.st_size);
 #elif __APPLE__
 				sent += sendfile(fd, sock_d, 0, &statistics.st_size, NULL,  0);
 #endif
