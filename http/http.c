@@ -170,6 +170,8 @@ size_t parse_host(char * buf, size_t pos, http_request * req) {
 	return pos_end + strlen("\r\n");
 }
 
+void perform_url(http_request* req);
+
 void parse_request(char * buf, http_request * req) {
 	if (strlen(buf) < strlen("get / http/1.0\r\n"))
 		return;
@@ -181,6 +183,7 @@ void parse_request(char * buf, http_request * req) {
 
 	// parsing url
 	cursor = parse_url(buf, cursor, req);
+	perform_url(req);
 
 	// parsing version
 	cursor = parse_version(buf, cursor, req);
@@ -294,6 +297,92 @@ void send_headers(int sock_d, http_response * resp) {
 
 //void recv_http_request(int sock_d, char * buf) {
 //}
+
+void change_str(size_t pos, char * buf) {
+	if (buf[pos] == '%' && pos + 2 < strlen(buf)) {
+		char * new_buf = calloc(sizeof(buf) + 2, sizeof(char));
+		strncpy(new_buf, buf, pos);
+		if (buf[pos+1] == '3' && buf[pos+2] == 'A') {
+			new_buf[pos] = ':';
+		}
+		else if (buf[pos+1] == '2' && buf[pos+2] == 'F') {
+			new_buf[pos] = '/';
+		}
+		else if (buf[pos+1] == '3' && buf[pos+2] == 'F') {
+			new_buf[pos] = '?';
+		}
+		else if (buf[pos+1] == '2' && buf[pos+2] == '3') {
+			new_buf[pos] = '#';
+		}
+		else if (buf[pos+1] == '5' && buf[pos+2] == 'B') {
+			new_buf[pos] = '[';
+		}
+		else if (buf[pos+1] == '5' && buf[pos+2] == 'D') {
+			new_buf[pos] = ']';
+		}
+		else if (buf[pos+1] == '4' && buf[pos+2] == '0') {
+			new_buf[pos] = '@';
+		}
+		else if (buf[pos+1] == '2' && buf[pos+2] == '1') {
+			new_buf[pos] = '!';
+		}
+		else if (buf[pos+1] == '2' && buf[pos+2] == '4') {
+			new_buf[pos] = '$';
+		}
+		else if (buf[pos+1] == '2' && buf[pos+2] == '6') {
+			new_buf[pos] = '&';
+		}
+		else if (buf[pos+1] == '2' && buf[pos+2] == '7') {
+			new_buf[pos] = '\'';
+		}
+		else if (buf[pos+1] == '2' && buf[pos+2] == '8') {
+			new_buf[pos] = '(';
+		}
+		else if (buf[pos+1] == '2' && buf[pos+2] == '9') {
+			new_buf[pos] = ')';
+		}
+		else if (buf[pos+1] == '2' && buf[pos+2] == 'A') {
+			new_buf[pos] = '*';
+		}
+		else if (buf[pos+1] == '2' && buf[pos+2] == 'B') {
+			new_buf[pos] = '+';
+		}
+		else if (buf[pos+1] == '2' && buf[pos+2] == 'C') {
+			new_buf[pos] = ',';
+		}
+		else if (buf[pos+1] == '3' && buf[pos+2] == 'B') {
+			new_buf[pos] = ';';
+		}
+		else if (buf[pos+1] == '3' && buf[pos+2] == 'D') {
+			new_buf[pos] = '=';
+		}
+		else if (buf[pos+1] == '2' && buf[pos+2] == '5') {
+			new_buf[pos] = '%';
+		}
+		else if (buf[pos+1] == '2' && buf[pos+2] == '0') {
+			new_buf[pos] = ' ';
+		}
+		else if (buf[pos+1] == '+') {
+			new_buf[pos] = ' ';
+			new_buf = strcat(new_buf, buf+pos+1);
+			free(buf);
+			buf = new_buf;
+			return;
+		}
+		new_buf = strcat(new_buf, buf+pos+3);
+		free(buf);
+		buf = new_buf;
+	}
+}
+
+void perform_url(http_request* req) {
+	for (int i = 0; i < strlen(req->url); i++) {
+		if (req->url[i] == '%') {
+			change_str(i, req->url);
+			i -= 3;
+		}
+	}
+}
 
 void send_response(int sock_d, http_request* req, http_response * resp, struct config * cfg) {
 	char * file_abs_path = calloc(strlen(req->url) + strlen(cfg->root_path) + 1, sizeof(char));
