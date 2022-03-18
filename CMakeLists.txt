@@ -5,7 +5,7 @@ project(web_server)
 set(SOURCE http/http.c)
 set(HEADER http/http.h)
 
-ADD_EXECUTABLE(main src/main.c http/http.c disc/disk.c)
+ADD_EXECUTABLE(main src/main.c http/http.c)
 
 include_directories (libev)
 
