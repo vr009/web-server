@@ -14,9 +14,12 @@
 
 #include "ev.h"
 #include "../http/http.h"
+#include "../config_parser/config_parser.h"
 
 /* client number limitation */
-#define MAX_CLIENTS 1000
+#define MAX_CLIENTS 10000
+
+static struct spec_config * cfg;
 
 /* message length limitation */
 #define MAX_MESSAGE_LEN (256)
@@ -49,7 +52,7 @@ static int create_serverfd(char const *addr, uint16_t u16port)
 
 static void read_cb(EV_P_ ev_io *watcher, int revents)
 {
-	test_cb(watcher->fd);
+	test_cb(watcher->fd, cfg->root);
 	ev_io_stop(EV_A_ watcher);
 	close(watcher->fd);
 	free(watcher);
@@ -153,9 +156,10 @@ int fork_workers(int cpu_count, int * workers_pids) {
 	return 0;
 }
 
-int main() {
+int main(int argc, char *argv[]) {
 	int port = 8084;
 
+	cfg = malloc(sizeof(struct spec_config));
 //	int ncpus ;
 //	ncpus = sysconf(_SC_NPROCESSORS_CONF);
 //	printf("cpus: %d\n", ncpus);
@@ -164,27 +168,15 @@ int main() {
 //	if (res == -1) {
 //		return res;
 //	}
+	if (argc > 1) {
+		parse_spec(argv[1], cfg);
+	} else {
+		parse_spec("/etc/httpd.conf", cfg);
+	}
 
 	signal(SIGPIPE, signal_handler);
 	start_server("0.0.0.0", port);
 
+	free(cfg);
 	return 0;
-}
-
-void helper() {
-	//	int sd = socket(PF_INET, SOCK_STREAM, 0);
-//	if (sd == -1) {
-//		return -1;
-//	}
-//
-//	struct sockaddr_in serv_addr;
-//	serv_addr.sin_family = AF_INET;
-//	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-//	serv_addr.sin_port = htons(port);
-//	int n = bind(sd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
-//	if (n == -1) {
-//		return -1;
-//	}
-//
-//	listen(sd, 100);
 }

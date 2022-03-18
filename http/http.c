@@ -338,14 +338,11 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 	if (f!= NULL){ fclose(f); }
 }
 
-void test_cb(int sd) {
+void test_cb(int sd, char * root_path) {
 	struct config cfg;
 
-#if defined(__linux__)
-	cfg.root_path = "/home/ubuntu/temp";
-#elif defined(__APPLE__) && defined(__MACH__)
-	cfg.root_path = "/Users/v.rianov/temp";
-#endif
+	cfg.root_path = root_path;
+
 //	cfg.root_path = "/Users/v.rianov/temp";
 	cfg.file_name = "index.html";
 
