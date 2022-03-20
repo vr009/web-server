@@ -142,9 +142,6 @@ size_t parse_version(char * buf, size_t pos, http_request * req) {
 	while (buf[pos_end] != '\r') {
 		pos_end++;
 	}
-//	if (pos_end - pos) {
-//		return 0;
-//	}
 
 	if ((buf[pos + 1] = '1') && (buf[pos_end - 1] == '1')) {
 		req->version = VER_1_1;
@@ -265,9 +262,13 @@ void define_date(http_response * resp) {
 void send_all(int sock_d, char * msg) {
 	size_t left = strlen(msg);
 	ssize_t sent = 0;
-	while (left > 0) {
-		sent = send(sock_d, msg + sent, strlen(msg) - sent, 0);
-		left -= sent;
+	while (sent < left) {
+		int snt = send(sock_d, msg + sent, strlen(msg) - sent, 0);
+		if (snt == -1) {
+			snt = snt;
+			exit(1);
+		}
+		sent += snt;
 	}
 }
 
@@ -327,12 +328,30 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 
 		define_content_type(req, resp);
 		send_headers(sock_d, resp);
+
+		long long file_bytes_sent = statistics.st_size;
+		long long sent = 0;
+
+		int res = -1;
 		if (req->req_method == GET) {
+			while(1) {
 #if defined(__linux__)
-			sendfile(sock_d, fd, 0, statistics.st_size);
+				res = sendfile(sock_d, fd, 0, statistics.st_size);
 #elif defined(__APPLE__)
-			sendfile(fd, sock_d, 0, &statistics.st_size, NULL,  0);
+				res = sendfile(fd, sock_d, 0, &file_bytes_sent, NULL,  0);
 #endif
+				sent += file_bytes_sent;
+				while (sent < statistics.st_size) {
+					res = sendfile(fd, sock_d, sent, &file_bytes_sent, NULL,  0);
+					sent += file_bytes_sent;
+				}
+				if (res == 0) {
+					break;
+				}
+				if (res == -1 && errno != EAGAIN) {
+					break;
+				}
+			}
 		}
 	} else {
 		send_headers(sock_d, resp);
@@ -342,8 +361,8 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 //	char end[4] = {'\r', '\n', '\r', '\n'};
 //	send(sock_d, end, 4, 0);
 
+	fclose(f);
 	free(file_abs_path);
-	if (f!= NULL){ fclose(f); }
 }
 
 void test_cb(int sd, char * root_path) {

@@ -45,7 +45,7 @@ static int create_serverfd(char const *addr, uint16_t u16port)
 
 	if (bind(fd, (struct sockaddr *)&server, sizeof(server)) < 0) err_message("bind err\n");
 
-	if (listen(fd, 10) < 0) err_message("listen err\n");
+	if (listen(fd, 10000) < 0) err_message("listen err\n");
 
 	return fd;
 }
@@ -82,14 +82,13 @@ static void accept_cb(EV_P_ ev_io *watcher, int revents)
 
 	connfd = accept(watcher->fd, NULL, NULL);
 	if (connfd > 0) {
-		if (++client_number > MAX_CLIENTS) {
-			close(watcher->fd);
-
-		} else {
+//		if (++client_number > MAX_CLIENTS) {
+//			close(watcher->fd);
+//		} else {
 			client = calloc(1, sizeof(*client));
 			ev_io_init(client, read_cb, connfd, EV_READ);
 			ev_io_start(EV_A_ client);
-		}
+//		}
 
 	} else if ((connfd < 0) && (errno == EAGAIN || errno == EWOULDBLOCK)) {
 		return;
@@ -112,9 +111,9 @@ static void start_server(char const *addr, uint16_t u16port)
 	ev_io *watcher;
 
 	fd = create_serverfd(addr, u16port);
+//	loop = ev_default_loop(0);
 	loop = ev_default_loop(0);
 	watcher = calloc(1, sizeof(*watcher));
-	printf("here: %p , %p", loop, watcher);
 	assert(("can not alloc memory\n", loop && watcher));
 
 	/* set nonblock flag */
