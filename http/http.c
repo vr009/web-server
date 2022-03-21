@@ -361,14 +361,19 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 //	char end[4] = {'\r', '\n', '\r', '\n'};
 //	send(sock_d, end, 4, 0);
 
-	fclose(f);
+	if (f != NULL) fclose(f);
 	free(file_abs_path);
 }
 
 void test_cb(int sd, char * root_path) {
 	struct config cfg;
 
-	cfg.root_path = root_path;
+	if (root_path == NULL) {
+		cfg.root_path = calloc(sizeof("/var/www/html"), sizeof(char));
+		cfg.root_path = strcpy(cfg.root_path, "/var/www/html");
+	} else {
+		cfg.root_path = root_path;
+	}
 
 //	cfg.root_path = "/Users/v.rianov/temp";
 	cfg.file_name = "index.html";
