@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <fcntl.h>
+#include <unistd.h>
 
 
 enum REQUEST_METHOD {
@@ -366,8 +367,8 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 }
 
 void test_cb(int sd, char * root_path) {
+//	write(STDOUT_FILENO, "RECEIVING-0", strlen("RECEIVING-0"));
 	struct config cfg;
-
 	if (root_path == NULL) {
 		cfg.root_path = calloc(sizeof("/var/www/html"), sizeof(char));
 		cfg.root_path = strcpy(cfg.root_path, "/var/www/html");
@@ -388,6 +389,7 @@ void test_cb(int sd, char * root_path) {
 	char * buf = calloc(1000, sizeof(char));
 	char * tmp_buf = calloc(125, sizeof(char));
 	int rcvd = 0;
+//	write(STDOUT_FILENO, "RECEIVING", strlen("RECEIVING"));
 	while(buf[rcvd] != '\n') {
 		int rvd = recv(sd, tmp_buf, sizeof(tmp_buf) - 1, MSG_DONTWAIT);
 		if (rvd == 0)
@@ -398,23 +400,31 @@ void test_cb(int sd, char * root_path) {
 			memset(tmp_buf, 0, strlen(tmp_buf));
 		}
 		if (rvd == -1 && errno != EAGAIN) {
+			char * num = calloc(sizeof("12345678"), sizeof(char));
+			sprintf(num, "%d\n", errno);
+			write(STDOUT_FILENO, num, strlen(num));
+			free(num);
+			write(STDOUT_FILENO, "-1 is catched\n", strlen("-1 is catched\n"));
 			free(buf);
 			free(tmp_buf);
 			http_request_free(req);
 			http_response_free(resp);
 			return;
 		} else if (rvd == -1) {
+//			write(STDOUT_FILENO, "!!!!!!", strlen("!!!!!!"));
 			break;
 		}
 	}
-
+//	write(STDOUT_FILENO, "NOT BLOCKED ON RECEIVING", strlen("NOT BLOCKED ON RECEIVING"));
 	parse_request(buf, req);
+//	write(STDOUT_FILENO, "PARSED REQUEST", strlen("PARSED REQUEST"));
 	if (req->url == NULL || strcmp(req->url, "") == 0) {
 		free(tmp_buf);
 		http_request_free(req);
 		http_response_free(resp);
 		return;
 	}
+//	write(STDOUT_FILENO, "SEND RESPONSE", strlen("SEND RESPONSE"));
 	send_response(sd, req, resp, &cfg);
 
 	free(tmp_buf);

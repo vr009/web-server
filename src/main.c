@@ -11,6 +11,9 @@
 #include <errno.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include "ev.h"
 #include "../http/http.h"
@@ -19,10 +22,12 @@
 /* client number limitation */
 #define MAX_CLIENTS 10000
 
-static struct spec_config * cfg;
+int * pids;
 
-/* message length limitation */
-#define MAX_MESSAGE_LEN (256)
+static int tasks_running;
+static int limit;
+
+static struct spec_config * cfg;
 
 #define err_message(msg) \
     do {perror(msg); exit(EXIT_FAILURE);} while(0)
@@ -56,23 +61,50 @@ static void read_cb(EV_P_ ev_io *watcher, int revents)
 	ev_io_stop(EV_A_ watcher);
 	close(watcher->fd);
 	free(watcher);
-//	ssize_t ret;
-//	char buf[MAX_MESSAGE_LEN] = {0};
-//
-//	ret = recv(watcher->fd, buf, sizeof(buf) - 1, MSG_DONTWAIT);
-//	if (ret > 0) {
-//		write(watcher->fd, buf, ret);
-//
-//	} else if ((ret < 0) && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-//		return;
-//
-//	} else {
-//		fprintf(stdout, "client closed (fd=%d)\n", watcher->fd);
-//		--client_number;
-//		ev_io_stop(EV_A_ watcher);
-//		close(watcher->fd);
-//		free(watcher);
-//	}
+}
+
+int clear_zombies() {
+	int cleared = 0;
+	for (int i = 0; i < tasks_running; i++) {
+		int status = 0;
+		int res = waitpid(pids[i], &status, WNOHANG);
+		if (res > 0 || WIFEXITED(status)) {
+//			write(STDOUT_FILENO, "CLEARED A ZOMBIE", strlen("CLEARED A ZOMBIE"));
+			cleared++;
+			pids[i] = 0;
+		}
+	}
+	return cleared;
+}
+
+static void read_cb2(EV_P_ ev_io *watcher, int revents)
+{
+	while (tasks_running >= limit) {
+//		sleep(1);
+		int cleared = clear_zombies();
+		if (cleared)
+			tasks_running -= cleared;
+	}
+	int pid = fork();
+	if (pid == -1) {
+//		write(STDOUT_FILENO, "FAIL", strlen("FAIL"));
+		return;
+	}
+	if (pid == 0) {
+//		write(STDOUT_FILENO, "INSIDE WORKER\n", strlen("INSIDE WORKER\n"));
+		test_cb(watcher->fd, cfg->root);
+		ev_io_stop(EV_A_ watcher);
+		close(watcher->fd);
+		free(watcher);
+//		write(STDOUT_FILENO, "WORKER ENDED UP", strlen("WORKER ENDED UP\n"));
+		exit(0);
+	} else {
+		ev_io_stop(EV_A_ watcher);
+		close(watcher->fd);
+		free(watcher);
+		pids[tasks_running] = pid;
+		tasks_running++;
+	}
 }
 
 static void accept_cb(EV_P_ ev_io *watcher, int revents)
@@ -82,13 +114,9 @@ static void accept_cb(EV_P_ ev_io *watcher, int revents)
 
 	connfd = accept(watcher->fd, NULL, NULL);
 	if (connfd > 0) {
-//		if (++client_number > MAX_CLIENTS) {
-//			close(watcher->fd);
-//		} else {
-			client = calloc(1, sizeof(*client));
-			ev_io_init(client, read_cb, connfd, EV_READ);
-			ev_io_start(EV_A_ client);
-//		}
+		client = calloc(1, sizeof(*client));
+		ev_io_init(client, read_cb2, connfd, EV_READ);
+		ev_io_start(EV_A_ client);
 
 	} else if ((connfd < 0) && (errno == EAGAIN || errno == EWOULDBLOCK)) {
 		return;
@@ -111,8 +139,9 @@ static void start_server(char const *addr, uint16_t u16port)
 	ev_io *watcher;
 
 	fd = create_serverfd(addr, u16port);
-//	loop = ev_default_loop(0);
+
 	loop = ev_default_loop(0);
+
 	watcher = calloc(1, sizeof(*watcher));
 	assert(("can not alloc memory\n", loop && watcher));
 
@@ -129,8 +158,16 @@ static void start_server(char const *addr, uint16_t u16port)
 
 static void signal_handler(int signo)
 {
+//	write(STDOUT_FILENO, "IN HANDLER\n", strlen("IN HANDLER\n"));
 	switch (signo) {
 		case SIGPIPE:
+			break;
+		case SIGINT:
+//			write(STDOUT_FILENO, "SIGINT", strlen("SIGINT"));
+			break;
+		case SIGCHLD:
+//			write(STDOUT_FILENO, "SIGCHLD", strlen("SIGCHLD"));
+			wait(NULL);
 			break;
 		default:
 			// unreachable
@@ -138,35 +175,17 @@ static void signal_handler(int signo)
 	}
 }
 
-int * workers_pids;
-
-int fork_workers(int cpu_count, int * workers_pids) {
-	for (int i = 0; i < cpu_count; i++) {
-		int pid = fork();
-		if (pid < 0) {
-			return -1;
-		} else if (pid == 0) {
-			continue;
-		} else {
-			workers_pids[i] = pid;
-			break;
-		}
-	}
-	return 0;
-}
 
 int main(int argc, char *argv[]) {
 	int port = 8084;
 
+	tasks_running = 0;
+
 	cfg = malloc(sizeof(struct spec_config));
 //	int ncpus ;
-//	ncpus = sysconf(_SC_NPROCESSORS_CONF);
+	limit = sysconf(_SC_NPROCESSORS_CONF);
+	pids = calloc(limit, sizeof(int));
 //	printf("cpus: %d\n", ncpus);
-//	workers_pids = (int*)calloc(ncpus, sizeof(int));
-//	int res = fork_workers(ncpus, workers_pids);
-//	if (res == -1) {
-//		return res;
-//	}
 	if (argc > 1) {
 		parse_spec(argv[1], cfg);
 	} else {
@@ -174,8 +193,11 @@ int main(int argc, char *argv[]) {
 	}
 
 	signal(SIGPIPE, signal_handler);
-	start_server("0.0.0.0", port);
+	signal(SIGINT, signal_handler);
+	signal(SIGCHLD, SIG_IGN);
+//	signal(SIGCHLD, signal_handler);
 
+	start_server("0.0.0.0", port);
 	free(cfg);
 	return 0;
 }
