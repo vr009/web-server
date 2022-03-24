@@ -400,11 +400,6 @@ void test_cb(int sd, char * root_path) {
 			memset(tmp_buf, 0, strlen(tmp_buf));
 		}
 		if (rvd == -1 && errno != EAGAIN) {
-			char * num = calloc(sizeof("12345678"), sizeof(char));
-			sprintf(num, "%d\n", errno);
-			write(STDOUT_FILENO, num, strlen(num));
-			free(num);
-			write(STDOUT_FILENO, "-1 is catched\n", strlen("-1 is catched\n"));
 			free(buf);
 			free(tmp_buf);
 			http_request_free(req);

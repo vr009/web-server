@@ -139,9 +139,11 @@ static void start_server(char const *addr, uint16_t u16port)
 	ev_io *watcher;
 
 	fd = create_serverfd(addr, u16port);
-
-	loop = ev_default_loop(0);
-
+#if defined(__linux__)
+	loop = ev_default_loop(EVBACKEND_EPOLL);
+#elif defined(__APPLE__)
+	loop = ev_default_loop(EVBACKEND_KQUEUE);
+#endif
 	watcher = calloc(1, sizeof(*watcher));
 	assert(("can not alloc memory\n", loop && watcher));
 
