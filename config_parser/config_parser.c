@@ -72,6 +72,8 @@ struct spec_config * parse_spec(char * spec_path, struct spec_config * sp_cfg){
 	}
 	res = parse_root(buf, sp_cfg);
 	if (res == 0) {
+		sp_cfg->root = calloc(sizeof("/var/www/html"), sizeof(char));
+		strncpy(sp_cfg->root, "/var/www/html", strlen("/var/www/html"));
 		fclose(f);
 		return sp_cfg;
 	}
