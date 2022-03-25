@@ -89,27 +89,28 @@ void http_response_free(http_response * resp) {
 
 size_t parse_method(char * buf, http_request * req) {
 	size_t cursor = 0;
-	char method_str[strlen("DELETE")];
-	while (buf[cursor] != ' ' && cursor < strlen("DELETE")) {
+	char method_str[strlen("OPTIONS")];
+	while (buf[cursor] != ' ' && cursor < strlen("OPTIONS")) {
 		cursor++;
 	}
 
-	if (cursor < strlen("DELETE"))
+	if (cursor <= strlen("OPTOINS"))
 		strncpy(method_str,buf,cursor);
 	else
 		return 0;
 
 	if (strcmp(method_str, "GET") == 0)
 		req->req_method = GET;
-	if (strcmp(method_str, "POST") == 0)
+	else if (strcmp(method_str, "POST") == 0)
 		req->req_method = POST;
-	if (strcmp(method_str, "PUT") == 0)
+	else if (strcmp(method_str, "PUT") == 0)
 		req->req_method = PUT;
-	if (strcmp(method_str, "HEAD") == 0)
+	else if (strcmp(method_str, "HEAD") == 0)
 		req->req_method = HEAD;
-	if (strcmp(method_str, "DELETE") == 0)
+	else if (strcmp(method_str, "DELETE") == 0)
 		req->req_method = DELETE;
-
+	else
+		req->req_method = POST;
 	return cursor;
 }
 
@@ -371,7 +372,7 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 }
 
 void test_cb(int sd, char * root_path) {
-//	write(STDOUT_FILENO, "RECEIVING-0", strlen("RECEIVING-0"));
+	write(STDOUT_FILENO, "RECEIVING-0", strlen("RECEIVING-0"));
 	struct config cfg;
 	if (root_path == NULL) {
 		cfg.root_path = calloc(sizeof("/var/www/html"), sizeof(char));
@@ -393,7 +394,7 @@ void test_cb(int sd, char * root_path) {
 	char * buf = calloc(1000, sizeof(char));
 	char * tmp_buf = calloc(125, sizeof(char));
 	int rcvd = 0;
-//	write(STDOUT_FILENO, "RECEIVING", strlen("RECEIVING"));
+	write(STDOUT_FILENO, "RECEIVING", strlen("RECEIVING"));
 	while(buf[rcvd] != '\n') {
 		int rvd = recv(sd, tmp_buf, sizeof(tmp_buf) - 1, MSG_DONTWAIT);
 		if (rvd == 0)
@@ -410,20 +411,20 @@ void test_cb(int sd, char * root_path) {
 			http_response_free(resp);
 			return;
 		} else if (rvd == -1) {
-//			write(STDOUT_FILENO, "!!!!!!", strlen("!!!!!!"));
+			write(STDOUT_FILENO, "!!!!!!", strlen("!!!!!!"));
 			break;
 		}
 	}
-//	write(STDOUT_FILENO, "NOT BLOCKED ON RECEIVING", strlen("NOT BLOCKED ON RECEIVING"));
+	write(STDOUT_FILENO, "NOT BLOCKED ON RECEIVING", strlen("NOT BLOCKED ON RECEIVING"));
 	parse_request(buf, req);
-//	write(STDOUT_FILENO, "PARSED REQUEST", strlen("PARSED REQUEST"));
+	write(STDOUT_FILENO, "PARSED REQUEST", strlen("PARSED REQUEST"));
 	if (req->url == NULL || strcmp(req->url, "") == 0) {
 		free(tmp_buf);
 		http_request_free(req);
 		http_response_free(resp);
 		return;
 	}
-//	write(STDOUT_FILENO, "SEND RESPONSE", strlen("SEND RESPONSE"));
+	write(STDOUT_FILENO, "SEND RESPONSE", strlen("SEND RESPONSE"));
 	send_response(sd, req, resp, &cfg);
 
 	free(tmp_buf);
