@@ -316,10 +316,12 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 	if (req->req_method != GET && req->req_method != HEAD) {
 		resp->code = 405;
 		send_headers(sock_d, resp);
+		return;
 	}
 	if (url_is_bad(req->url)) {
 		resp->code = 404;
 		send_headers(sock_d, resp);
+		return;
 	}
 	char * file_abs_path = calloc(strlen(req->url) + strlen(cfg->root_path) + 1, sizeof(char));
 	file_abs_path = strcat(file_abs_path, cfg->root_path);
