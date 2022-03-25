@@ -76,26 +76,29 @@ int clear_zombies() {
 
 static void read_cb2(EV_P_ ev_io *watcher, int revents)
 {
+	write(STDOUT_FILENO, "LIMIT_SHIT", strlen("LIMIT_SHIT"));
 	while (tasks_running >= limit) {
 //		sleep(1);
 		int cleared = clear_zombies();
 		if (cleared)
 			tasks_running -= cleared;
 	}
+	write(STDOUT_FILENO, "READ_CB", strlen("READ_CB"));
 	int pid = fork();
 	if (pid == -1) {
-//		write(STDOUT_FILENO, "FAIL", strlen("FAIL"));
+		write(STDOUT_FILENO, "FAIL", strlen("FAIL"));
 		return;
 	}
 	if (pid == 0) {
-//		write(STDOUT_FILENO, "INSIDE WORKER\n", strlen("INSIDE WORKER\n"));
+		write(STDOUT_FILENO, "INSIDE WORKER\n", strlen("INSIDE WORKER\n"));
 		test_cb(watcher->fd, cfg->root);
 		ev_io_stop(EV_A_ watcher);
 		close(watcher->fd);
 		free(watcher);
-//		write(STDOUT_FILENO, "WORKER ENDED UP", strlen("WORKER ENDED UP\n"));
+		write(STDOUT_FILENO, "WORKER ENDED UP", strlen("WORKER ENDED UP\n"));
 		exit(0);
 	} else {
+		write(STDOUT_FILENO, "WATCHER_FAILED", strlen("WATCHER_FAILED"));
 		ev_io_stop(EV_A_ watcher);
 		close(watcher->fd);
 		free(watcher);
@@ -108,17 +111,21 @@ static void accept_cb(EV_P_ ev_io *watcher, int revents)
 {
 	int connfd;
 	ev_io *client;
-
+	write(STDOUT_FILENO, "ACCEPT", strlen("ACCEPT"));
 	connfd = accept(watcher->fd, NULL, NULL);
+	write(STDOUT_FILENO, "ACCEPTED", strlen("ACCEPTED"));
 	if (connfd > 0) {
+		write(STDOUT_FILENO, "1111", strlen("1111"));
 		client = calloc(1, sizeof(*client));
 		ev_io_init(client, read_cb2, connfd, EV_READ);
 		ev_io_start(EV_A_ client);
 
 	} else if ((connfd < 0) && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+		write(STDOUT_FILENO, "2222", strlen("2222"));
 		return;
 
 	} else {
+		write(STDOUT_FILENO, "3333", strlen("3333"));
 		close(watcher->fd);
 		ev_break(EV_A_ EVBREAK_ALL);
 		/* this will lead main to exit, no need to free watchers of clients */
@@ -146,7 +153,7 @@ static void start_server(char const *addr, uint16_t u16port)
 
 	/* set nonblock flag */
 	fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
-
+	write(STDOUT_FILENO, "LOOP", strlen("LOOP"));
 	ev_io_init(watcher, accept_cb, fd, EV_READ);
 	ev_io_start(EV_A_ watcher);
 	ev_run(EV_A_ 0);
@@ -176,7 +183,7 @@ static void signal_handler(int signo)
 
 
 int main(int argc, char *argv[]) {
-	int port = 8084;
+	int port = 80;
 
 	tasks_running = 0;
 
@@ -184,6 +191,9 @@ int main(int argc, char *argv[]) {
 
 	int max_possible_cpus = sysconf(_SC_NPROCESSORS_CONF);
 	limit = cfg->cpus < max_possible_cpus ? cfg->cpus : max_possible_cpus;
+	if (limit == 0) {
+		limit = max_possible_cpus;
+	}
 	pids = calloc(limit, sizeof(int));
 
 	if (argc > 1) {
@@ -192,10 +202,15 @@ int main(int argc, char *argv[]) {
 		parse_spec("/etc/httpd.conf", cfg);
 	}
 
+	if (cfg->root == NULL) {
+		cfg->root = calloc(sizeof("/var/www/html"), sizeof(char));
+		strncpy(cfg->root, "/var/www/html", strlen("/var/www/html"));
+	}
+
 	signal(SIGPIPE, signal_handler);
 	signal(SIGINT, signal_handler);
 	signal(SIGCHLD, SIG_IGN);
-
+	write(STDOUT_FILENO, "STARTING SERVER", strlen("STARTING SERVER"));
 	start_server("0.0.0.0", port);
 	free(cfg);
 	return 0;
