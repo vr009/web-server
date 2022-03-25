@@ -19,9 +19,6 @@
 #include "../http/http.h"
 #include "../config_parser/config_parser.h"
 
-/* client number limitation */
-#define MAX_CLIENTS 10000
-
 int * pids;
 
 static int tasks_running;
@@ -184,10 +181,11 @@ int main(int argc, char *argv[]) {
 	tasks_running = 0;
 
 	cfg = malloc(sizeof(struct spec_config));
-//	int ncpus ;
-	limit = sysconf(_SC_NPROCESSORS_CONF);
+
+	int max_possible_cpus = sysconf(_SC_NPROCESSORS_CONF);
+	limit = cfg->cpus < max_possible_cpus ? cfg->cpus : max_possible_cpus;
 	pids = calloc(limit, sizeof(int));
-//	printf("cpus: %d\n", ncpus);
+
 	if (argc > 1) {
 		parse_spec(argv[1], cfg);
 	} else {
@@ -197,7 +195,6 @@ int main(int argc, char *argv[]) {
 	signal(SIGPIPE, signal_handler);
 	signal(SIGINT, signal_handler);
 	signal(SIGCHLD, SIG_IGN);
-//	signal(SIGCHLD, signal_handler);
 
 	start_server("0.0.0.0", port);
 	free(cfg);
