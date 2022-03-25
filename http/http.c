@@ -303,9 +303,22 @@ void perform_url(http_request* req) {
 	req->url = urlDecode(req->url);
 }
 
+
+int url_is_bad(char * url) {
+	char * t = strstr(url, "../");
+	if (strstr(url, "../") == NULL) {
+		return 0;
+	}
+	return 1;
+}
+
 void send_response(int sock_d, http_request* req, http_response * resp, struct config * cfg) {
 	if (req->req_method != GET && req->req_method != HEAD) {
 		resp->code = 405;
+		send_headers(sock_d, resp);
+	}
+	if (url_is_bad(req->url)) {
+		resp->code = 404;
 		send_headers(sock_d, resp);
 	}
 	char * file_abs_path = calloc(strlen(req->url) + strlen(cfg->root_path) + 1, sizeof(char));
@@ -380,15 +393,12 @@ void test_cb(int sd, char * root_path) {
 		cfg.root_path = root_path;
 	}
 
-//	cfg.root_path = "/Users/v.rianov/temp";
 	cfg.file_name = "index.html";
 
 	struct http_request * req = (http_request*)malloc(sizeof(http_request));
 	req->url = req->host = req->buf = req->body = req->params = NULL;
 	struct http_response * resp = (http_response*) malloc(sizeof(http_response));
 	resp->content_type = resp->date = resp->body = resp->server = resp->file_path = resp->connection = resp->additional_headers = NULL;
-//	request_init(req);
-//	response_init(resp);
 
 	char * buf = calloc(1000, sizeof(char));
 	char * tmp_buf = calloc(125, sizeof(char));
