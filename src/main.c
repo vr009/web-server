@@ -42,7 +42,6 @@ static int create_serverfd(char const *addr, uint16_t u16port)
 
 	server.sin_family = AF_INET;
 	server.sin_port = htons(u16port);
-//	inet_pton(AF_INET, addr, &server.sin_addr);
 	server.sin_addr.s_addr = htonl(INADDR_ANY);
 
 	if (bind(fd, (struct sockaddr *)&server, sizeof(server)) < 0) err_message("bind err\n");
@@ -66,7 +65,6 @@ int clear_zombies() {
 		int status = 0;
 		int res = waitpid(pids[i], &status, WNOHANG);
 		if (res > 0 || WIFEXITED(status)) {
-//			write(STDOUT_FILENO, "CLEARED A ZOMBIE", strlen("CLEARED A ZOMBIE"));
 			cleared++;
 			pids[i] = 0;
 		}
@@ -76,29 +74,22 @@ int clear_zombies() {
 
 static void read_cb2(EV_P_ ev_io *watcher, int revents)
 {
-//	write(STDOUT_FILENO, "LIMIT_SHIT", strlen("LIMIT_SHIT"));
 	while (tasks_running >= limit) {
-//		sleep(1);
 		int cleared = clear_zombies();
 		if (cleared)
 			tasks_running -= cleared;
 	}
-//	write(STDOUT_FILENO, "READ_CB", strlen("READ_CB"));
 	int pid = fork();
 	if (pid == -1) {
-//		write(STDOUT_FILENO, "FAIL", strlen("FAIL"));
 		return;
 	}
 	if (pid == 0) {
-//		write(STDOUT_FILENO, "INSIDE WORKER\n", strlen("INSIDE WORKER\n"));
 		test_cb(watcher->fd, cfg->root);
 		ev_io_stop(EV_A_ watcher);
 		close(watcher->fd);
 		free(watcher);
-//		write(STDOUT_FILENO, "WORKER ENDED UP", strlen("WORKER ENDED UP\n"));
 		exit(0);
 	} else {
-//		write(STDOUT_FILENO, "WATCHER_FAILED", strlen("WATCHER_FAILED"));
 		ev_io_stop(EV_A_ watcher);
 		close(watcher->fd);
 		free(watcher);
@@ -111,21 +102,16 @@ static void accept_cb(EV_P_ ev_io *watcher, int revents)
 {
 	int connfd;
 	ev_io *client;
-//	write(STDOUT_FILENO, "ACCEPT", strlen("ACCEPT"));
 	connfd = accept(watcher->fd, NULL, NULL);
-//	write(STDOUT_FILENO, "ACCEPTED", strlen("ACCEPTED"));
 	if (connfd > 0) {
-//		write(STDOUT_FILENO, "1111", strlen("1111"));
 		client = calloc(1, sizeof(*client));
 		ev_io_init(client, read_cb2, connfd, EV_READ);
 		ev_io_start(EV_A_ client);
 
 	} else if ((connfd < 0) && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-//		write(STDOUT_FILENO, "2222", strlen("2222"));
 		return;
 
 	} else {
-//		write(STDOUT_FILENO, "3333", strlen("3333"));
 		close(watcher->fd);
 		ev_break(EV_A_ EVBREAK_ALL);
 		/* this will lead main to exit, no need to free watchers of clients */
@@ -153,7 +139,6 @@ static void start_server(char const *addr, uint16_t u16port)
 
 	/* set nonblock flag */
 	fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
-//	write(STDOUT_FILENO, "LOOP", strlen("LOOP"));
 	ev_io_init(watcher, accept_cb, fd, EV_READ);
 	ev_io_start(EV_A_ watcher);
 	ev_run(EV_A_ 0);
@@ -164,15 +149,12 @@ static void start_server(char const *addr, uint16_t u16port)
 
 static void signal_handler(int signo)
 {
-//	write(STDOUT_FILENO, "IN HANDLER\n", strlen("IN HANDLER\n"));
 	switch (signo) {
 		case SIGPIPE:
 			break;
 		case SIGINT:
-//			write(STDOUT_FILENO, "SIGINT", strlen("SIGINT"));
 			break;
 		case SIGCHLD:
-//			write(STDOUT_FILENO, "SIGCHLD", strlen("SIGCHLD"));
 			wait(NULL);
 			break;
 		default:
