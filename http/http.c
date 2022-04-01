@@ -297,6 +297,7 @@ void send_headers(int sock_d, http_response * resp) {
 	}
 	sprintf(buf, template, version, resp->code, answer_msg, resp->date, resp->content_length, resp->content_type, "Closed");
 	send_all(sock_d, buf);
+	free(buf);
 }
 
 void perform_url(http_request* req) {
@@ -305,7 +306,6 @@ void perform_url(http_request* req) {
 
 
 int url_is_bad(char * url) {
-	char * t = strstr(url, "../");
 	if (strstr(url, "../") == NULL) {
 		return 0;
 	}
@@ -377,10 +377,6 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 	} else {
 		send_headers(sock_d, resp);
 	}
-
-
-//	char end[4] = {'\r', '\n', '\r', '\n'};
-//	send(sock_d, end, 4, 0);
 
 	if (f != NULL) fclose(f);
 	free(file_abs_path);

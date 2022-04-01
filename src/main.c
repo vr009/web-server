@@ -55,13 +55,6 @@ static int create_serverfd(char const *addr, uint16_t u16port)
 
 static void read_cb(EV_P_ ev_io *watcher, int revents)
 {
-//	write(STDOUT_FILENO, "WORKING:\n", strlen("WORKING:\n"));
-//	int pd = getpid();
-//	char * buf = calloc(sizeof("1234556"), sizeof(char));
-//	sprintf(buf, "%d\n", pd);
-//	write(STDOUT_FILENO, "\npid is: ", strlen("\npid is: "));
-//	write(STDOUT_FILENO, buf, strlen(buf));
-//	free(buf);
 	test_cb(watcher->fd, cfg->root);
 	ev_io_stop(EV_A_ watcher);
 	close(watcher->fd);
