@@ -26,7 +26,7 @@ static int limit;
 
 static struct spec_config * cfg;
 
-static int * workers_statistic;
+//static int * workers_statistic;
 
 #define err_message(msg) \
     do {perror(msg); exit(EXIT_FAILURE);} while(0)
@@ -80,13 +80,13 @@ static void accept_cb(EV_P_ ev_io *watcher, int revents)
 	int connfd;
 	ev_io *client;
 	connfd = accept(watcher->fd, NULL, NULL);
-	int pid = getpid();
-	for (int i = 0; i < limit; i++) {
-		if (pids[i] == pid) {
-			workers_statistic[i] = workers_statistic[i] + 1;
-			break;
-		}
-	}
+//	int pid = getpid();
+//	for (int i = 0; i < limit; i++) {
+//		if (pids[i] == pid) {
+//			workers_statistic[i] = workers_statistic[i] + 1;
+//			break;
+//		}
+//	}
 	if (connfd > 0) {
 		client = calloc(1, sizeof(*client));
 		ev_io_init(client, read_cb, connfd, EV_READ);
@@ -162,7 +162,7 @@ static void signal_handler(int signo)
 			write(STDOUT_FILENO, "\n", strlen("\n"));
 			char *buf = calloc(sizeof("pid: 1234567\n count of works: 1234567\n"), sizeof(char));
 			for (int i = 0; i < limit; i++) {
-				sprintf(buf, "pid: %d\n count of works: %d\n", pids[i], workers_statistic[i]);
+//				sprintf(buf, "pid: %d\n count of works: %d\n", pids[i], workers_statistic[i]);
 				write(STDOUT_FILENO, buf, strlen(buf));
 			}
 			free(buf);
@@ -202,8 +202,8 @@ int main(int argc, char *argv[]) {
 	pids = (int*)mmap(NULL, sizeof(long) * limit , PROT_READ | PROT_WRITE,
 	                  MAP_SHARED | MAP_ANONYMOUS, -1, 0);
 
-	workers_statistic = (int*)mmap(NULL, sizeof(long) * limit , PROT_READ | PROT_WRITE,
-	                                    MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+//	workers_statistic = (int*)mmap(NULL, sizeof(long) * limit , PROT_READ | PROT_WRITE,
+//	                                    MAP_SHARED | MAP_ANONYMOUS, -1, 0);
 
 	if (cfg->root == NULL) {
 		cfg->root = calloc(sizeof("/var/www/html"), sizeof(char));
@@ -213,8 +213,10 @@ int main(int argc, char *argv[]) {
 	signal(SIGPIPE, signal_handler);
 	signal(SIGINT, signal_handler);
 	signal(SIGCHLD, SIG_IGN);
+
 	write(STDOUT_FILENO, "STARTING SERVER", strlen("STARTING SERVER"));
 	start_server("0.0.0.0", port);
+
 	free(cfg);
 	return 0;
 }

@@ -326,12 +326,17 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 	file_abs_path = strcat(file_abs_path, cfg->root_path);
 	file_abs_path = strcat(file_abs_path, req->url);
 
+	// strcmp(file_abs_path + strlen(file_abs_path) - strlen("index.html"), "index.html") == 0
+
 	FILE * f = fopen(file_abs_path, "r+");
 	if (f == NULL) {
-		if (errno == EACCES)
+		if (errno == EACCES) {
 			resp->code = 403; // 403 ?
-		else
+		} else if (errno == ENOENT && strcmp(file_abs_path + strlen(file_abs_path) - strlen("index.html"), "index.html") == 0) {
+			resp->code = 403;
+		} else {
 			resp->code = 404;
+		}
 	} else if(req->req_method != GET && req->req_method != HEAD) {
 		resp->code = 405;
 	} else {
@@ -394,6 +399,7 @@ void test_cb(int sd, char * root_path) {
 
 	struct http_request * req = (http_request*)malloc(sizeof(http_request));
 	req->url = req->host = req->buf = req->body = req->params = NULL;
+
 	struct http_response * resp = (http_response*) malloc(sizeof(http_response));
 	resp->content_type = resp->date = resp->body = resp->server = resp->file_path = resp->connection = resp->additional_headers = NULL;
 
