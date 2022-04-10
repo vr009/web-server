@@ -16,8 +16,8 @@
 #include <sys/wait.h>
 
 #include "ev.h"
-#include "../http/http.h"
-#include "../config_parser/config_parser.h"
+#include "http.h"
+#include "config_parser.h"
 
 int * pids;
 

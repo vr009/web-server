@@ -1,5 +1,5 @@
 #include "http.h"
-#include "../URLDecode/urldecode.h"
+#include "urldecode.h"
 #include <string.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -110,7 +110,7 @@ size_t parse_method(char * buf, http_request * req) {
 	else if (strcmp(method_str, "DELETE") == 0)
 		req->req_method = DELETE;
 	else
-		req->req_method = POST;
+		req->req_method = UNKNOWN;
 	return cursor;
 }
 
@@ -303,7 +303,6 @@ void send_headers(int sock_d, http_response * resp) {
 void perform_url(http_request* req) {
 	req->url = urlDecode(req->url);
 }
-
 
 int url_is_bad(char * url) {
 	if (strstr(url, "../") == NULL) {
