@@ -265,7 +265,7 @@ void send_all(int sock_d, char * msg) {
 	size_t left = strlen(msg);
 	ssize_t sent = 0;
 	while (sent < left) {
-		int snt = send(sock_d, msg + sent, strlen(msg) - sent, 0);
+		long snt = send(sock_d, msg + sent, strlen(msg) - sent, 0);
 		if (snt == -1) {
 			snt = snt;
 			exit(1);
@@ -314,19 +314,19 @@ int url_is_bad(char * url) {
 void send_response(int sock_d, http_request* req, http_response * resp, struct config * cfg) {
 	if (req->req_method != GET && req->req_method != HEAD) {
 		resp->code = 405;
+		resp->content_length = 0;
 		send_headers(sock_d, resp);
 		return;
 	}
 	if (url_is_bad(req->url)) {
 		resp->code = 404;
+		resp->content_length = 0;
 		send_headers(sock_d, resp);
 		return;
 	}
 	char * file_abs_path = calloc(strlen(req->url) + strlen(cfg->root_path) + 1, sizeof(char));
 	file_abs_path = strcat(file_abs_path, cfg->root_path);
 	file_abs_path = strcat(file_abs_path, req->url);
-
-	// strcmp(file_abs_path + strlen(file_abs_path) - strlen("index.html"), "index.html") == 0
 
 	FILE * f = fopen(file_abs_path, "r+");
 	if (f == NULL) {
@@ -379,6 +379,7 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 			}
 		}
 	} else {
+		resp->content_length = 0;
 		send_headers(sock_d, resp);
 	}
 
