@@ -7,7 +7,7 @@ set(HEADER http/http.h)
 
 ADD_EXECUTABLE(main src/main.c http/http.c config_parser/config_parser.c URLDecode/urldecode.c)
 
-include_directories (libev)
+include_directories (libev URLDecode http config_parser)
 
 configure_file (${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 

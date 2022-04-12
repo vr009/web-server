@@ -1,5 +1,5 @@
 #include "http.h"
-#include "../URLDecode/urldecode.h"
+#include "urldecode.h"
 #include <string.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -110,7 +110,7 @@ size_t parse_method(char * buf, http_request * req) {
 	else if (strcmp(method_str, "DELETE") == 0)
 		req->req_method = DELETE;
 	else
-		req->req_method = POST;
+		req->req_method = UNKNOWN;
 	return cursor;
 }
 
@@ -265,7 +265,7 @@ void send_all(int sock_d, char * msg) {
 	size_t left = strlen(msg);
 	ssize_t sent = 0;
 	while (sent < left) {
-		int snt = send(sock_d, msg + sent, strlen(msg) - sent, 0);
+		long snt = send(sock_d, msg + sent, strlen(msg) - sent, 0);
 		if (snt == -1) {
 			snt = snt;
 			exit(1);
@@ -297,15 +297,14 @@ void send_headers(int sock_d, http_response * resp) {
 	}
 	sprintf(buf, template, version, resp->code, answer_msg, resp->date, resp->content_length, resp->content_type, "Closed");
 	send_all(sock_d, buf);
+	free(buf);
 }
 
 void perform_url(http_request* req) {
 	req->url = urlDecode(req->url);
 }
 
-
 int url_is_bad(char * url) {
-	char * t = strstr(url, "../");
 	if (strstr(url, "../") == NULL) {
 		return 0;
 	}
@@ -315,11 +314,13 @@ int url_is_bad(char * url) {
 void send_response(int sock_d, http_request* req, http_response * resp, struct config * cfg) {
 	if (req->req_method != GET && req->req_method != HEAD) {
 		resp->code = 405;
+		resp->content_length = 0;
 		send_headers(sock_d, resp);
 		return;
 	}
 	if (url_is_bad(req->url)) {
 		resp->code = 404;
+		resp->content_length = 0;
 		send_headers(sock_d, resp);
 		return;
 	}
@@ -329,10 +330,13 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 
 	FILE * f = fopen(file_abs_path, "r+");
 	if (f == NULL) {
-		if (errno == EACCES)
+		if (errno == EACCES) {
 			resp->code = 403; // 403 ?
-		else
+		} else if (errno == ENOENT && strcmp(file_abs_path + strlen(file_abs_path) - strlen("index.html"), "index.html") == 0) {
+			resp->code = 403;
+		} else {
 			resp->code = 404;
+		}
 	} else if(req->req_method != GET && req->req_method != HEAD) {
 		resp->code = 405;
 	} else {
@@ -375,12 +379,9 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 			}
 		}
 	} else {
+		resp->content_length = 0;
 		send_headers(sock_d, resp);
 	}
-
-
-//	char end[4] = {'\r', '\n', '\r', '\n'};
-//	send(sock_d, end, 4, 0);
 
 	if (f != NULL) fclose(f);
 	free(file_abs_path);
@@ -399,6 +400,7 @@ void test_cb(int sd, char * root_path) {
 
 	struct http_request * req = (http_request*)malloc(sizeof(http_request));
 	req->url = req->host = req->buf = req->body = req->params = NULL;
+
 	struct http_response * resp = (http_response*) malloc(sizeof(http_response));
 	resp->content_type = resp->date = resp->body = resp->server = resp->file_path = resp->connection = resp->additional_headers = NULL;
 

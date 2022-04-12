@@ -16,8 +16,8 @@
 #include <sys/wait.h>
 
 #include "ev.h"
-#include "../http/http.h"
-#include "../config_parser/config_parser.h"
+#include "http.h"
+#include "config_parser.h"
 
 int * pids;
 
@@ -25,6 +25,8 @@ static int tasks_running;
 static int limit;
 
 static struct spec_config * cfg;
+
+//static int * workers_statistic;
 
 #define err_message(msg) \
     do {perror(msg); exit(EXIT_FAILURE);} while(0)
@@ -46,7 +48,7 @@ static int create_serverfd(char const *addr, uint16_t u16port)
 
 	if (bind(fd, (struct sockaddr *)&server, sizeof(server)) < 0) err_message("bind err\n");
 
-	if (listen(fd, 10000) < 0) err_message("listen err\n");
+	if (listen(fd, 1000000) < 0) err_message("listen err\n");
 
 	return fd;
 }
@@ -72,40 +74,22 @@ int clear_zombies() {
 	return cleared;
 }
 
-static void read_cb2(EV_P_ ev_io *watcher, int revents)
-{
-	while (tasks_running >= limit) {
-		int cleared = clear_zombies();
-		if (cleared)
-			tasks_running -= cleared;
-	}
-	int pid = fork();
-	if (pid == -1) {
-		return;
-	}
-	if (pid == 0) {
-		test_cb(watcher->fd, cfg->root);
-		ev_io_stop(EV_A_ watcher);
-		close(watcher->fd);
-		free(watcher);
-		exit(0);
-	} else {
-		ev_io_stop(EV_A_ watcher);
-		close(watcher->fd);
-		free(watcher);
-		pids[tasks_running] = pid;
-		tasks_running++;
-	}
-}
 
 static void accept_cb(EV_P_ ev_io *watcher, int revents)
 {
 	int connfd;
 	ev_io *client;
 	connfd = accept(watcher->fd, NULL, NULL);
+//	int pid = getpid();
+//	for (int i = 0; i < limit; i++) {
+//		if (pids[i] == pid) {
+//			workers_statistic[i] = workers_statistic[i] + 1;
+//			break;
+//		}
+//	}
 	if (connfd > 0) {
 		client = calloc(1, sizeof(*client));
-		ev_io_init(client, read_cb2, connfd, EV_READ);
+		ev_io_init(client, read_cb, connfd, EV_READ);
 		ev_io_start(EV_A_ client);
 
 	} else if ((connfd < 0) && (errno == EAGAIN || errno == EWOULDBLOCK)) {
@@ -141,7 +125,28 @@ static void start_server(char const *addr, uint16_t u16port)
 	fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
 	ev_io_init(watcher, accept_cb, fd, EV_READ);
 	ev_io_start(EV_A_ watcher);
-	ev_run(EV_A_ 0);
+
+	for (int i = 0; i < limit; i++){
+		int pid = fork();
+		if (pid == -1) {
+			return;
+		}
+		if (pid == 0) {
+			ev_loop_fork(loop);
+			ev_run(EV_A_ 0);
+			tasks_running--;
+			ev_loop_destroy(EV_A);
+			free(watcher);
+		} else {
+			pids[i] = pid;
+			continue;
+		}
+	}
+	while (tasks_running != 0) {
+		sleep(10);
+	}
+	write(STDOUT_FILENO, "CLEARING ZOMBIES", strlen("CLEARING ZOMBIES"));
+	clear_zombies();
 
 	ev_loop_destroy(EV_A);
 	free(watcher);
@@ -153,6 +158,15 @@ static void signal_handler(int signo)
 		case SIGPIPE:
 			break;
 		case SIGINT:
+		{
+			write(STDOUT_FILENO, "\n", strlen("\n"));
+			char *buf = calloc(sizeof("pid: 1234567\n count of works: 1234567\n"), sizeof(char));
+			for (int i = 0; i < limit; i++) {
+//				sprintf(buf, "pid: %d\n count of works: %d\n", pids[i], workers_statistic[i]);
+				write(STDOUT_FILENO, buf, strlen(buf));
+			}
+			free(buf);
+		}
 			break;
 		case SIGCHLD:
 			wait(NULL);
@@ -167,12 +181,12 @@ static void signal_handler(int signo)
 int main(int argc, char *argv[]) {
 	int port = 80;
 
-	tasks_running = 0;
+	tasks_running = 8;
 
 	cfg = malloc(sizeof(struct spec_config));
 
 	int max_possible_cpus = sysconf(_SC_NPROCESSORS_CONF);
-	pids = calloc(limit, sizeof(int));
+//	pids = calloc(limit, sizeof(int));
 
 	if (argc > 1) {
 		parse_spec(argv[1], cfg);
@@ -183,6 +197,13 @@ int main(int argc, char *argv[]) {
 	if (limit == 0) {
 		limit = max_possible_cpus;
 	}
+	limit = 8;
+
+	pids = (int*)mmap(NULL, sizeof(long) * limit , PROT_READ | PROT_WRITE,
+	                  MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+
+//	workers_statistic = (int*)mmap(NULL, sizeof(long) * limit , PROT_READ | PROT_WRITE,
+//	                                    MAP_SHARED | MAP_ANONYMOUS, -1, 0);
 
 	if (cfg->root == NULL) {
 		cfg->root = calloc(sizeof("/var/www/html"), sizeof(char));
@@ -192,8 +213,10 @@ int main(int argc, char *argv[]) {
 	signal(SIGPIPE, signal_handler);
 	signal(SIGINT, signal_handler);
 	signal(SIGCHLD, SIG_IGN);
+
 	write(STDOUT_FILENO, "STARTING SERVER", strlen("STARTING SERVER"));
 	start_server("0.0.0.0", port);
+
 	free(cfg);
 	return 0;
 }
