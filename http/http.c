@@ -402,7 +402,7 @@ void test_cb(int sd, char * root_path) {
 	resp->content_type = resp->date = resp->body = resp->server = resp->file_path = resp->connection = resp->additional_headers = NULL;
 
 	char * buf = calloc(1000, sizeof(char));
-	char * tmp_buf = calloc(125, sizeof(char));
+	char * tmp_buf = calloc(800, sizeof(char));
 	int rcvd = 0;
 	while(buf[rcvd] != '\n') {
 		int rvd = recv(sd, tmp_buf, sizeof(tmp_buf) - 1, MSG_DONTWAIT);

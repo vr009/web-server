@@ -118,10 +118,6 @@ static void start_server(char const *addr, uint16_t u16port)
 #elif defined(__APPLE__)
 	loop = ev_default_loop(EVBACKEND_KQUEUE);
 #endif
-	watcher = calloc(1, sizeof(*watcher));
-	assert(("can not alloc memory\n", loop && watcher));
-
-
 
 	for (int i = 0; i < limit; i++) {
 		int pid = fork();
@@ -129,6 +125,9 @@ static void start_server(char const *addr, uint16_t u16port)
 			return;
 		}
 		if (pid == 0) {
+			watcher = calloc(1, sizeof(*watcher));
+			assert(("can not alloc memory\n", loop && watcher));
+
 			/* set nonblock flag */
 			fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
 			ev_io_init(watcher, accept_cb, fd, EV_READ);
