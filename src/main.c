@@ -210,6 +210,7 @@ int main(int argc, char *argv[]) {
 		strncpy(cfg->root, "/var/www/html", strlen("/var/www/html"));
 	}
 	write(STDOUT_FILENO, cfg->root, strlen(cfg->root));
+	write(STDOUT_FILENO, "\n", strlen("\n"));
 
 	signal(SIGPIPE, signal_handler);
 	signal(SIGINT, signal_handler);
