@@ -209,6 +209,7 @@ int main(int argc, char *argv[]) {
 		cfg->root = calloc(sizeof("/var/www/html"), sizeof(char));
 		strncpy(cfg->root, "/var/www/html", strlen("/var/www/html"));
 	}
+	write(STDOUT_FILENO, cfg->root, strlen(cfg->root));
 
 	signal(SIGPIPE, signal_handler);
 	signal(SIGINT, signal_handler);
