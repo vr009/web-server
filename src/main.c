@@ -197,7 +197,7 @@ int main(int argc, char *argv[]) {
 	if (limit == 0) {
 		limit = max_possible_cpus;
 	}
-	limit = 8;
+	limit = limit * 3;
 
 	pids = (int*)mmap(NULL, sizeof(long) * limit , PROT_READ | PROT_WRITE,
 	                  MAP_SHARED | MAP_ANONYMOUS, -1, 0);

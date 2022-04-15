@@ -86,25 +86,22 @@ void http_response_free(http_response * resp) {
 
 size_t parse_method(char * buf, http_request * req) {
 	size_t cursor = 0;
-	char method_str[strlen("OPTIONS")];
 	while (buf[cursor] != ' ' && cursor < strlen("OPTIONS")) {
 		cursor++;
 	}
 
-	if (cursor <= strlen("OPTOINS"))
-		strncpy(method_str,buf,cursor);
-	else
+	if (cursor > strlen("OPTIONS"))
 		return 0;
 
-	if (strcmp(method_str, "GET") == 0)
+	if (strncmp(buf, "GET", strlen("GET")) == 0)
 		req->req_method = GET;
-	else if (strcmp(method_str, "POST") == 0)
+	else if (strncmp(buf, "POST", strlen("POST")) == 0)
 		req->req_method = POST;
-	else if (strcmp(method_str, "PUT") == 0)
+	else if (strncmp(buf, "PUT", strlen("PUT")) == 0)
 		req->req_method = PUT;
-	else if (strcmp(method_str, "HEAD") == 0)
+	else if (strncmp(buf, "HEAD", strlen("HEAD")) == 0)
 		req->req_method = HEAD;
-	else if (strcmp(method_str, "DELETE") == 0)
+	else if (strncmp(buf, "DELETE", strlen("DELETE")) == 0)
 		req->req_method = DELETE;
 	else
 		req->req_method = UNKNOWN;
@@ -142,9 +139,9 @@ size_t parse_version(char * buf, size_t pos, http_request * req) {
 		pos_end++;
 	}
 
-	if ((buf[pos + 1] = '1') && (buf[pos_end - 1] == '1')) {
+	if ((buf[pos + 1] == '1') && (buf[pos_end - 1] == '1')) {
 		req->version = VER_1_1;
-	} else if ((buf[pos + 1] = '1') && (buf[pos_end - 1] == '0')) {
+	} else if ((buf[pos + 1] == '1') && (buf[pos_end - 1] == '0')) {
 		req->version = VER_1_0;
 	}
 	return pos + strlen("HTTP/1.1\r\n");
@@ -285,11 +282,9 @@ void send_headers(int sock_d, http_response * resp) {
 	}
 	if (resp->code == 404) {
 		strcpy(answer_msg, "NOT FOUND");
-	}
-	if (resp->code == 403) {
+	} else if (resp->code == 403) {
 		strcpy(answer_msg, "FORBIDDEN");
-	}
-	if (resp->code == 405) {
+	} else if (resp->code == 405) {
 		strcpy(answer_msg, "METHOD NOT ALLOWED");
 	}
 	sprintf(buf, template, version, resp->code, answer_msg, resp->date, resp->content_length, resp->content_type, "Closed");
