@@ -32,7 +32,6 @@ struct http_request {
 	char * url;
 	char * host;
 	char * body;
-	char ** params;
 	char * buf;
 };
 
@@ -70,8 +69,6 @@ void http_request_free(http_request * req) {
 	if (req->host) free(req->host);
 	if (req->buf && strcmp(req->buf, "")) free(req->buf);
 	if (req->body) free(req->body);
-	if (req->params != NULL && *req->params) free(*req->params);
-	if (req->params) free(req->params);
 	if (req) free(req);
 }
 
@@ -399,7 +396,7 @@ void test_cb(int sd, char * root_path) {
 	cfg.file_name = "index.html";
 
 	struct http_request * req = (http_request*)malloc(sizeof(http_request));
-	req->url = req->host = req->buf = req->body = req->params = NULL;
+	req->url = req->host = req->buf = req->body = NULL;
 
 	struct http_response * resp = (http_response*) malloc(sizeof(http_response));
 	resp->content_type = resp->date = resp->body = resp->server = resp->file_path = resp->connection = resp->additional_headers = NULL;

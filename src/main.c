@@ -121,17 +121,19 @@ static void start_server(char const *addr, uint16_t u16port)
 	watcher = calloc(1, sizeof(*watcher));
 	assert(("can not alloc memory\n", loop && watcher));
 
-	/* set nonblock flag */
-	fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
-	ev_io_init(watcher, accept_cb, fd, EV_READ);
-	ev_io_start(EV_A_ watcher);
 
-	for (int i = 0; i < limit; i++){
+
+	for (int i = 0; i < limit; i++) {
 		int pid = fork();
 		if (pid == -1) {
 			return;
 		}
 		if (pid == 0) {
+			/* set nonblock flag */
+			fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
+			ev_io_init(watcher, accept_cb, fd, EV_READ);
+			ev_io_start(EV_A_ watcher);
+
 			ev_loop_fork(loop);
 			ev_run(EV_A_ 0);
 			tasks_running--;
@@ -186,7 +188,6 @@ int main(int argc, char *argv[]) {
 	cfg = malloc(sizeof(struct spec_config));
 
 	int max_possible_cpus = sysconf(_SC_NPROCESSORS_CONF);
-//	pids = calloc(limit, sizeof(int));
 
 	if (argc > 1) {
 		parse_spec(argv[1], cfg);
