@@ -55,7 +55,7 @@ static int create_serverfd(char const *addr, uint16_t u16port)
 }
 
 const int MAX_THREADS_WORKERS = 5;
-pthread_t threads_in_work[MAX_THREADS_WORKERS];
+static pthread_t threads_in_work[5];
 int threads_arr_size = 0;
 
 void join_all_threads() {
