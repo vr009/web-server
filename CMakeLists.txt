@@ -18,3 +18,7 @@ set (EV_SRC
 
 add_subdirectory(libev-cmake)
 target_link_libraries(main ev)
+
+find_library(PTHREAD_LIBRARY pthread)
+# ...
+target_link_libraries(main ${PTHREAD_LIBRARY})

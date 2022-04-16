@@ -14,6 +14,7 @@
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <pthread.h>
 
 #include "ev.h"
 #include "http.h"
@@ -53,12 +54,34 @@ static int create_serverfd(char const *addr, uint16_t u16port)
 	return fd;
 }
 
-static void read_cb(EV_P_ ev_io *watcher, int revents)
-{
+const int MAX_THREADS_WORKERS = 5;
+pthread_t threads_in_work[MAX_THREADS_WORKERS];
+int threads_arr_size = 0;
+
+void join_all_threads() {
+	write(STDOUT_FILENO, "\nJOINING THREADS\n", strlen("\nJOINING THREADS\n"));
+	for (int i = 0; i < threads_arr_size; i++) {
+		pthread_join(threads_in_work[i], NULL);
+	}
+}
+
+void *test_cb_wrapper(void *args) {
+	ev_io *watcher = (ev_io*)args;
 	test_cb(watcher->fd, cfg->root);
-	ev_io_stop(EV_A_ watcher);
 	close(watcher->fd);
 	free(watcher);
+	return EXIT_SUCCESS;
+}
+
+static void read_cb(EV_P_ ev_io *watcher, int revents)
+{
+	pthread_t thread_id;
+
+	pthread_create(&thread_id, NULL, test_cb_wrapper, watcher);
+	threads_in_work[threads_arr_size] = thread_id;
+	threads_arr_size++;
+
+	ev_io_stop(EV_A_ watcher);
 }
 
 int clear_zombies() {
@@ -87,6 +110,10 @@ static void accept_cb(EV_P_ ev_io *watcher, int revents)
 //			break;
 //		}
 //	}
+	if (threads_arr_size == MAX_THREADS_WORKERS - 1) {
+		join_all_threads();
+	}
+
 	if (connfd > 0) {
 		client = calloc(1, sizeof(*client));
 		ev_io_init(client, read_cb, connfd, EV_READ);
