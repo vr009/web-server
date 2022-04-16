@@ -59,7 +59,6 @@ pthread_t threads_in_work[MAX_THREADS_WORKERS];
 int threads_arr_size = 0;
 
 void join_all_threads() {
-	write(STDOUT_FILENO, "\nJOINING THREADS\n", strlen("\nJOINING THREADS\n"));
 	for (int i = 0; i < threads_arr_size; i++) {
 		pthread_join(threads_in_work[i], NULL);
 	}
