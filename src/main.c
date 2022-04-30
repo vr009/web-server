@@ -158,7 +158,6 @@ static void signal_handler(int signo)
 			write(STDOUT_FILENO, "\n", strlen("\n"));
 			char *buf = calloc(sizeof("pid: 1234567\n count of works: 1234567\n"), sizeof(char));
 			for (int i = 0; i < limit; i++) {
-//				sprintf(buf, "pid: %d\n count of works: %d\n", pids[i], workers_statistic[i]);
 				write(STDOUT_FILENO, buf, strlen(buf));
 			}
 			free(buf);
@@ -196,9 +195,6 @@ int main(int argc, char *argv[]) {
 
 	pids = (int*)mmap(NULL, sizeof(long) * limit , PROT_READ | PROT_WRITE,
 	                  MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-
-//	workers_statistic = (int*)mmap(NULL, sizeof(long) * limit , PROT_READ | PROT_WRITE,
-//	                                    MAP_SHARED | MAP_ANONYMOUS, -1, 0);
 
 	if (cfg->root == NULL) {
 		cfg->root = calloc(sizeof("/var/www/html"), sizeof(char));
