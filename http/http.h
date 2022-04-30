@@ -14,6 +14,6 @@ void http_request_free(http_request * req);
 
 void http_response_free(http_response * resp);
 
-void test_cb(int sd, char * root_path);
+void http_cb(int sd, char * root_path);
 
 #endif //WEB_SERVER_HTTP_H
