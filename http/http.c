@@ -367,7 +367,7 @@ void send_response(struct http_response * resp) {
 	}
 }
 
-void test_cb(int sd, char * root_path) {
+void http_cb(int sd, char * root_path) {
 	struct config cfg;
 	if (root_path == NULL) {
 		cfg.root_path = calloc(sizeof("/var/www/html"), sizeof(char));

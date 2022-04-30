@@ -56,7 +56,7 @@ static int create_serverfd(char const *addr, uint16_t u16port)
 
 static void read_cb(EV_P_ ev_io *watcher, int revents)
 {
-	test_cb(watcher->fd, cfg->root);
+	http_cb(watcher->fd, cfg->root);
 	close(watcher->fd);
 	free(watcher);
 	ev_io_stop(EV_A_ watcher);
