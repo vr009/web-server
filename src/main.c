@@ -14,6 +14,7 @@
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <pthread.h>
 
 #include "ev.h"
 #include "http.h"
@@ -56,9 +57,9 @@ static int create_serverfd(char const *addr, uint16_t u16port)
 static void read_cb(EV_P_ ev_io *watcher, int revents)
 {
 	test_cb(watcher->fd, cfg->root);
-	ev_io_stop(EV_A_ watcher);
 	close(watcher->fd);
 	free(watcher);
+	ev_io_stop(EV_A_ watcher);
 }
 
 int clear_zombies() {
@@ -80,13 +81,7 @@ static void accept_cb(EV_P_ ev_io *watcher, int revents)
 	int connfd;
 	ev_io *client;
 	connfd = accept(watcher->fd, NULL, NULL);
-//	int pid = getpid();
-//	for (int i = 0; i < limit; i++) {
-//		if (pids[i] == pid) {
-//			workers_statistic[i] = workers_statistic[i] + 1;
-//			break;
-//		}
-//	}
+
 	if (connfd > 0) {
 		client = calloc(1, sizeof(*client));
 		ev_io_init(client, read_cb, connfd, EV_READ);
@@ -118,20 +113,21 @@ static void start_server(char const *addr, uint16_t u16port)
 #elif defined(__APPLE__)
 	loop = ev_default_loop(EVBACKEND_KQUEUE);
 #endif
-	watcher = calloc(1, sizeof(*watcher));
-	assert(("can not alloc memory\n", loop && watcher));
 
-	/* set nonblock flag */
-	fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
-	ev_io_init(watcher, accept_cb, fd, EV_READ);
-	ev_io_start(EV_A_ watcher);
-
-	for (int i = 0; i < limit; i++){
+	for (int i = 0; i < limit; i++) {
 		int pid = fork();
 		if (pid == -1) {
 			return;
 		}
 		if (pid == 0) {
+			watcher = calloc(1, sizeof(*watcher));
+			assert(("can not alloc memory\n", loop && watcher));
+
+			/* set nonblock flag */
+			fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
+			ev_io_init(watcher, accept_cb, fd, EV_READ);
+			ev_io_start(EV_A_ watcher);
+
 			ev_loop_fork(loop);
 			ev_run(EV_A_ 0);
 			tasks_running--;
@@ -162,7 +158,6 @@ static void signal_handler(int signo)
 			write(STDOUT_FILENO, "\n", strlen("\n"));
 			char *buf = calloc(sizeof("pid: 1234567\n count of works: 1234567\n"), sizeof(char));
 			for (int i = 0; i < limit; i++) {
-//				sprintf(buf, "pid: %d\n count of works: %d\n", pids[i], workers_statistic[i]);
 				write(STDOUT_FILENO, buf, strlen(buf));
 			}
 			free(buf);
@@ -186,7 +181,6 @@ int main(int argc, char *argv[]) {
 	cfg = malloc(sizeof(struct spec_config));
 
 	int max_possible_cpus = sysconf(_SC_NPROCESSORS_CONF);
-//	pids = calloc(limit, sizeof(int));
 
 	if (argc > 1) {
 		parse_spec(argv[1], cfg);
@@ -197,13 +191,10 @@ int main(int argc, char *argv[]) {
 	if (limit == 0) {
 		limit = max_possible_cpus;
 	}
-	limit = 8;
+	limit = limit * 3;
 
 	pids = (int*)mmap(NULL, sizeof(long) * limit , PROT_READ | PROT_WRITE,
 	                  MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-
-//	workers_statistic = (int*)mmap(NULL, sizeof(long) * limit , PROT_READ | PROT_WRITE,
-//	                                    MAP_SHARED | MAP_ANONYMOUS, -1, 0);
 
 	if (cfg->root == NULL) {
 		cfg->root = calloc(sizeof("/var/www/html"), sizeof(char));

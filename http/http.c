@@ -32,7 +32,6 @@ struct http_request {
 	char * url;
 	char * host;
 	char * body;
-	char ** params;
 	char * buf;
 };
 
@@ -47,6 +46,10 @@ struct http_response {
 	char * additional_headers;
 	char * body;
 	char * file_path;
+	enum REQUEST_METHOD req_method;
+
+	int fd; // file to send
+	int sd; // socket descriptor
 };
 
 struct config {
@@ -57,21 +60,11 @@ struct config {
 const char * t = "HTTP/1.1 200 OK\r\nDate: Mon, 27 Jul 2009 12:28:53 GMT\r\n"
 				 "Server: web\r\nContent-Length: 5000000000\r\nConnection: Closed\r\n";
 
-void request_init(http_request * req) {
-	req = (http_request*)malloc(sizeof(http_request));
-}
-
-void response_init(http_response * resp) {
-	resp = (http_response*) malloc(sizeof(http_response));
-}
-
 void http_request_free(http_request * req) {
 	if (req->url) free(req->url);
 	if (req->host) free(req->host);
 	if (req->buf && strcmp(req->buf, "")) free(req->buf);
 	if (req->body) free(req->body);
-	if (req->params != NULL && *req->params) free(*req->params);
-	if (req->params) free(req->params);
 	if (req) free(req);
 }
 
@@ -89,25 +82,22 @@ void http_response_free(http_response * resp) {
 
 size_t parse_method(char * buf, http_request * req) {
 	size_t cursor = 0;
-	char method_str[strlen("OPTIONS")];
 	while (buf[cursor] != ' ' && cursor < strlen("OPTIONS")) {
 		cursor++;
 	}
 
-	if (cursor <= strlen("OPTOINS"))
-		strncpy(method_str,buf,cursor);
-	else
+	if (cursor > strlen("OPTIONS"))
 		return 0;
 
-	if (strcmp(method_str, "GET") == 0)
+	if (strncmp(buf, "GET", strlen("GET")) == 0)
 		req->req_method = GET;
-	else if (strcmp(method_str, "POST") == 0)
+	else if (strncmp(buf, "POST", strlen("POST")) == 0)
 		req->req_method = POST;
-	else if (strcmp(method_str, "PUT") == 0)
+	else if (strncmp(buf, "PUT", strlen("PUT")) == 0)
 		req->req_method = PUT;
-	else if (strcmp(method_str, "HEAD") == 0)
+	else if (strncmp(buf, "HEAD", strlen("HEAD")) == 0)
 		req->req_method = HEAD;
-	else if (strcmp(method_str, "DELETE") == 0)
+	else if (strncmp(buf, "DELETE", strlen("DELETE")) == 0)
 		req->req_method = DELETE;
 	else
 		req->req_method = UNKNOWN;
@@ -145,9 +135,9 @@ size_t parse_version(char * buf, size_t pos, http_request * req) {
 		pos_end++;
 	}
 
-	if ((buf[pos + 1] = '1') && (buf[pos_end - 1] == '1')) {
+	if ((buf[pos + 1] == '1') && (buf[pos_end - 1] == '1')) {
 		req->version = VER_1_1;
-	} else if ((buf[pos + 1] = '1') && (buf[pos_end - 1] == '0')) {
+	} else if ((buf[pos + 1] == '1') && (buf[pos_end - 1] == '0')) {
 		req->version = VER_1_0;
 	}
 	return pos + strlen("HTTP/1.1\r\n");
@@ -246,7 +236,6 @@ void define_content_type(http_request * req, http_response * resp) {
 }
 
 void define_date(http_response * resp) {
-// Date: Mon, 27 Jul 2009 12:28:53 GMT
 	long int s_time;
 	struct tm m_time;
 
@@ -255,9 +244,6 @@ void define_date(http_response * resp) {
 	localtime_r (&s_time, &m_time);
 
 	resp->date = calloc(sizeof("Mon, 27 Jul 2009 12:28:53 GMT"), sizeof(char));
-
-//	sprintf(resp->date,"%a, %d %b %Y %H:%M:%S GMT", m_time.tm_wday, m_time.tm_mday,
-//			m_time.tm_mon, m_time.tm_year, m_time.tm_hour, m_time.tm_min, m_time.tm_sec);
 	sprintf(resp->date, "%s GMT", asctime_r(&m_time, buf));
 }
 
@@ -288,11 +274,9 @@ void send_headers(int sock_d, http_response * resp) {
 	}
 	if (resp->code == 404) {
 		strcpy(answer_msg, "NOT FOUND");
-	}
-	if (resp->code == 403) {
+	} else if (resp->code == 403) {
 		strcpy(answer_msg, "FORBIDDEN");
-	}
-	if (resp->code == 405) {
+	} else if (resp->code == 405) {
 		strcpy(answer_msg, "METHOD NOT ALLOWED");
 	}
 	sprintf(buf, template, version, resp->code, answer_msg, resp->date, resp->content_length, resp->content_type, "Closed");
@@ -311,17 +295,17 @@ int url_is_bad(char * url) {
 	return 1;
 }
 
-void send_response(int sock_d, http_request* req, http_response * resp, struct config * cfg) {
+void prepare_response(int sock_d, http_request* req, http_response * resp, struct config * cfg) {
+	resp->sd = sock_d;
+	resp->req_method = req->req_method;
 	if (req->req_method != GET && req->req_method != HEAD) {
 		resp->code = 405;
 		resp->content_length = 0;
-		send_headers(sock_d, resp);
 		return;
 	}
 	if (url_is_bad(req->url)) {
 		resp->code = 404;
 		resp->content_length = 0;
-		send_headers(sock_d, resp);
 		return;
 	}
 	char * file_abs_path = calloc(strlen(req->url) + strlen(cfg->root_path) + 1, sizeof(char));
@@ -331,60 +315,56 @@ void send_response(int sock_d, http_request* req, http_response * resp, struct c
 	FILE * f = fopen(file_abs_path, "r+");
 	if (f == NULL) {
 		if (errno == EACCES) {
-			resp->code = 403; // 403 ?
+			resp->code = 403;
 		} else if (errno == ENOENT && strcmp(file_abs_path + strlen(file_abs_path) - strlen("index.html"), "index.html") == 0) {
 			resp->code = 403;
 		} else {
 			resp->code = 404;
 		}
-	} else if(req->req_method != GET && req->req_method != HEAD) {
-		resp->code = 405;
+		resp->content_length = 0;
 	} else {
 		resp->code = 200;
-	}
-
-	if (resp->code == 200) {
 		struct stat statistics;
 		int fd = fileno(f);
-
+		resp->fd = fd;
 		if (fstat(fd, &statistics) != -1) {
 			resp->content_length = statistics.st_size;
 		}
-
 		define_content_type(req, resp);
-		send_headers(sock_d, resp);
+	}
+	free(file_abs_path);
+}
 
-		long long file_bytes_sent = statistics.st_size;
+void send_response(struct http_response * resp) {
+	send_headers(resp->sd, resp);
+	if (resp->code == 200 && resp->req_method != HEAD) {
+		int fd = resp->fd;
+		int sd = resp->sd;
+
+		long long file_bytes_sent = resp->content_length;
 		long long sent = 0;
 
 		int res = -1;
-		if (req->req_method == GET) {
-			while(1) {
+		while(1) {
 #if defined(__linux__)
-				res = sendfile(sock_d, fd, 0, statistics.st_size);
+			res = sendfile(sock_d, fd, 0, statistics.st_size);
 #elif defined(__APPLE__)
-				res = sendfile(fd, sock_d, 0, &file_bytes_sent, NULL,  0);
+			res = sendfile(fd, sd, 0, &file_bytes_sent, NULL,  0);
 #endif
+			sent += file_bytes_sent;
+			while (sent < resp->content_length) {
+				res = sendfile(fd, sd, sent, &file_bytes_sent, NULL,  0);
 				sent += file_bytes_sent;
-				while (sent < statistics.st_size) {
-					res = sendfile(fd, sock_d, sent, &file_bytes_sent, NULL,  0);
-					sent += file_bytes_sent;
-				}
-				if (res == 0) {
-					break;
-				}
-				if (res == -1 && errno != EAGAIN) {
-					break;
-				}
+			}
+			if (res == 0) {
+				break;
+			}
+			if (res == -1 && errno != EAGAIN) {
+				break;
 			}
 		}
-	} else {
-		resp->content_length = 0;
-		send_headers(sock_d, resp);
+		close(resp->fd);
 	}
-
-	if (f != NULL) fclose(f);
-	free(file_abs_path);
 }
 
 void test_cb(int sd, char * root_path) {
@@ -399,13 +379,14 @@ void test_cb(int sd, char * root_path) {
 	cfg.file_name = "index.html";
 
 	struct http_request * req = (http_request*)malloc(sizeof(http_request));
-	req->url = req->host = req->buf = req->body = req->params = NULL;
+	req->url = req->host = req->buf = req->body = NULL;
 
 	struct http_response * resp = (http_response*) malloc(sizeof(http_response));
-	resp->content_type = resp->date = resp->body = resp->server = resp->file_path = resp->connection = resp->additional_headers = NULL;
+	resp->content_type = resp->date = resp->body = resp->server = resp->file_path =
+			resp->connection = resp->additional_headers = NULL;
 
 	char * buf = calloc(1000, sizeof(char));
-	char * tmp_buf = calloc(125, sizeof(char));
+	char * tmp_buf = calloc(800, sizeof(char));
 	int rcvd = 0;
 	while(buf[rcvd] != '\n') {
 		int rvd = recv(sd, tmp_buf, sizeof(tmp_buf) - 1, MSG_DONTWAIT);
@@ -433,7 +414,8 @@ void test_cb(int sd, char * root_path) {
 		http_response_free(resp);
 		return;
 	}
-	send_response(sd, req, resp, &cfg);
+	prepare_response(sd, req, resp, &cfg);
+	send_response(resp);
 
 	free(tmp_buf);
 	http_request_free(req);
