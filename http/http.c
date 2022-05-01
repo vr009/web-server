@@ -367,7 +367,7 @@ void send_response(struct http_response * resp) {
 	}
 }
 
-void http_cb(int sd, char * root_path) {
+http_response * http_cb(int sd, char * root_path) {
 	struct config cfg;
 	if (root_path == NULL) {
 		cfg.root_path = calloc(sizeof("/var/www/html"), sizeof(char));
@@ -402,7 +402,7 @@ void http_cb(int sd, char * root_path) {
 			free(tmp_buf);
 			http_request_free(req);
 			http_response_free(resp);
-			return;
+			return NULL;
 		} else if (rvd == -1) {
 			break;
 		}
@@ -412,12 +412,11 @@ void http_cb(int sd, char * root_path) {
 		free(tmp_buf);
 		http_request_free(req);
 		http_response_free(resp);
-		return;
+		return NULL;
 	}
 	prepare_response(sd, req, resp, &cfg);
-	send_response(resp);
 
 	free(tmp_buf);
 	http_request_free(req);
-	http_response_free(resp);
+	return resp;
 }

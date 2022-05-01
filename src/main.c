@@ -54,12 +54,30 @@ static int create_serverfd(char const *addr, uint16_t u16port)
 	return fd;
 }
 
+static void idle_cb(struct ev_loop *loop, ev_idle *watcher, int revents)
+{
+	sleep(0);
+}
+
+struct thread_data {
+	void * data;
+	struct ev_loop *read_loop;
+	struct ev_loop *write_loop;
+};
+
 static void read_cb(EV_P_ ev_io *watcher, int revents)
 {
-	http_cb(watcher->fd, cfg->root);
+	struct thread_data * th_data = (struct thread_data *)watcher->data;
+	struct ev_loop * read_loop = th_data->read_loop;
+
+	http_response * resp;
+	resp = http_cb(watcher->fd, cfg->root);
+	send_response(resp);
+//	fprintf(stdout, "read_cb from pid=%d\n", getpid());
 	close(watcher->fd);
+	ev_io_stop(read_loop, watcher);
+
 	free(watcher);
-	ev_io_stop(EV_A_ watcher);
 }
 
 int clear_zombies() {
@@ -78,15 +96,19 @@ int clear_zombies() {
 
 static void accept_cb(EV_P_ ev_io *watcher, int revents)
 {
+	struct thread_data * th_data = (struct thread_data *)watcher->data;
+	struct ev_loop *read_loop = th_data->read_loop;
+
 	int connfd;
 	ev_io *client;
 	connfd = accept(watcher->fd, NULL, NULL);
 
 	if (connfd > 0) {
 		client = calloc(1, sizeof(*client));
+		client->data = th_data;
 		ev_io_init(client, read_cb, connfd, EV_READ);
-		ev_io_start(EV_A_ client);
-
+		ev_io_start(read_loop, client);
+//		fprintf(stdout, "accept_cb from %d\n", getpid());
 	} else if ((connfd < 0) && (errno == EAGAIN || errno == EWOULDBLOCK)) {
 		return;
 
@@ -97,11 +119,28 @@ static void accept_cb(EV_P_ ev_io *watcher, int revents)
 	}
 }
 
+void * read_thread(void * args) {
+	struct ev_loop *read_loop = (struct ev_loop *)args;
+
+	ev_idle *idle_watcher;
+	idle_watcher = (ev_idle *)calloc(1, sizeof(*idle_watcher));
+	ev_idle_init(idle_watcher, idle_cb);
+	fprintf(stdout, "read_loop in thread %p\n", read_loop);
+	ev_idle_start(read_loop, idle_watcher);
+
+	fprintf(stdout, "forked to read thread at pid=%d\n", getpid());
+
+	ev_run(read_loop, 0);
+	fprintf(stdout, "returning\n");
+	return 0;
+}
+
+
 static void start_server(char const *addr, uint16_t u16port)
 {
 	int fd;
 #ifdef EV_MULTIPLICITY
-	struct ev_loop *loop;
+	struct ev_loop *loop; // == accept_loop
 #else
 	int loop;
 #endif
@@ -120,8 +159,21 @@ static void start_server(char const *addr, uint16_t u16port)
 			return;
 		}
 		if (pid == 0) {
+			struct ev_loop *read_loop;
+
+			struct thread_data * th_data = malloc(sizeof(struct thread_data));
+
+			read_loop = ev_loop_new(EVBACKEND_KQUEUE);
+
+			th_data->read_loop = read_loop;
+
+			pthread_t reader_thread;
+
+			pthread_create(&reader_thread, NULL, read_thread, read_loop);
+
 			watcher = calloc(1, sizeof(*watcher));
 			assert(("can not alloc memory\n", loop && watcher));
+			watcher->data = th_data;
 
 			/* set nonblock flag */
 			fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
@@ -130,9 +182,13 @@ static void start_server(char const *addr, uint16_t u16port)
 
 			ev_loop_fork(loop);
 			ev_run(EV_A_ 0);
+			fprintf(stdout, "DESTROYED\n");
 			tasks_running--;
 			ev_loop_destroy(EV_A);
 			free(watcher);
+			pthread_join(reader_thread, NULL);
+			fprintf(stdout, "destroyed\n");
+			ev_loop_destroy(read_loop);
 		} else {
 			pids[i] = pid;
 			continue;
@@ -174,7 +230,7 @@ static void signal_handler(int signo)
 
 
 int main(int argc, char *argv[]) {
-	int port = 80;
+	int port = 82;
 
 	tasks_running = 8;
 
@@ -191,7 +247,7 @@ int main(int argc, char *argv[]) {
 	if (limit == 0) {
 		limit = max_possible_cpus;
 	}
-	limit = limit * 3;
+	limit = limit * 2;
 
 	pids = (int*)mmap(NULL, sizeof(long) * limit , PROT_READ | PROT_WRITE,
 	                  MAP_SHARED | MAP_ANONYMOUS, -1, 0);
