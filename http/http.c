@@ -353,8 +353,12 @@ void send_response(struct http_response * resp) {
 #endif
 			sent += file_bytes_sent;
 			while (sent < resp->content_length) {
+				file_bytes_sent = 0;
 				res = sendfile(fd, sd, sent, &file_bytes_sent, NULL,  0);
+//				if (res == file_bytes_sent == 0)
+//					break;
 				sent += file_bytes_sent;
+//				fprintf(stdout, "sent: %d need to send: %d\n", sent, resp->content_length);
 			}
 			if (res == 0) {
 				break;
@@ -419,4 +423,18 @@ http_response * http_cb(int sd, char * root_path) {
 	free(tmp_buf);
 	http_request_free(req);
 	return resp;
+}
+
+void timer() {
+	// ====================================================
+//	clock_t start_t, end_t;
+//
+//	//Simple implementation
+//	start_t = clock();
+	// ====================================================
+	// ====================================================
+//	end_t = clock();
+//
+//	double total_t = (double)(end_t - start_t) / (CLOCKS_PER_SEC/1000);
+//	fprintf(stdout, "Time taken: %lf\n", total_t);
 }

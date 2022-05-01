@@ -73,10 +73,11 @@ static void read_cb(EV_P_ ev_io *watcher, int revents)
 	http_response * resp;
 	resp = http_cb(watcher->fd, cfg->root);
 	send_response(resp);
-//	fprintf(stdout, "read_cb from pid=%d\n", getpid());
+
 	close(watcher->fd);
 	ev_io_stop(read_loop, watcher);
 
+	free(resp);
 	free(watcher);
 }
 
