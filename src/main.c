@@ -58,8 +58,8 @@ static void read_cb(EV_P_ ev_io *watcher, int revents)
 {
 	http_cb(watcher->fd, cfg->root);
 	close(watcher->fd);
-	free(watcher);
 	ev_io_stop(EV_A_ watcher);
+	free(watcher);
 }
 
 int clear_zombies() {
@@ -91,6 +91,7 @@ static void accept_cb(EV_P_ ev_io *watcher, int revents)
 		return;
 
 	} else {
+		fprintf(stdout, "errno %d\n", errno);
 		close(watcher->fd);
 		ev_break(EV_A_ EVBREAK_ALL);
 		/* this will lead main to exit, no need to free watchers of clients */
@@ -124,7 +125,7 @@ static void start_server(char const *addr, uint16_t u16port)
 			assert(("can not alloc memory\n", loop && watcher));
 
 			/* set nonblock flag */
-			fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
+//			fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
 			ev_io_init(watcher, accept_cb, fd, EV_READ);
 			ev_io_start(EV_A_ watcher);
 
@@ -174,7 +175,7 @@ static void signal_handler(int signo)
 
 
 int main(int argc, char *argv[]) {
-	int port = 80;
+	int port = 82;
 
 	tasks_running = 8;
 

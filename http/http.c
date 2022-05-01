@@ -364,6 +364,8 @@ void send_response(struct http_response * resp) {
 			}
 		}
 		close(resp->fd);
+	} else if (resp->code == 200 && resp->req_method == HEAD) {
+		close(resp->fd);
 	}
 }
 
