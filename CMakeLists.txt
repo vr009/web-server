@@ -8,14 +8,14 @@ add_subdirectory(http)
 add_subdirectory(config_parser)
 add_subdirectory(third_party/URLDecode)
 
-#set(EV_LIBRARY libev /usr/local/lib/libev.a)
 find_library(EV_LIBRARY
         NAMES libev ev evlib libev_static
         PATHS /usr/local/lib
               /usr/lib
+              ${PROJECT_BINARY_DIR}/lib
+              ${CMAKE_CURRENT_SOURCE_DIR}/libev
+              ${CMAKE_CURRENT_SOURCE_DIR}/third_party/libev
         )
-
-#/usr/local/lib/libev.a
 
 list(APPEND EXTRA_LIBS http config_parser URLDecode)
 
