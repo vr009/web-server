@@ -175,7 +175,7 @@ static void signal_handler(int signo)
 
 
 int main(int argc, char *argv[]) {
-	int port = 82;
+	int port = 80;
 
 	tasks_running = 8;
 

@@ -347,7 +347,7 @@ void send_response(struct http_response * resp) {
 		int res = -1;
 		while(1) {
 #if defined(__linux__)
-			res = sendfile(sock_d, fd, 0, statistics.st_size);
+			res = sendfile(sd, fd, 0, resp->content_length);
 #elif defined(__APPLE__)
 			res = sendfile(fd, sd, 0, &file_bytes_sent, NULL,  0);
 #endif
