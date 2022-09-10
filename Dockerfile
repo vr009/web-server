@@ -14,4 +14,4 @@ WORKDIR /build
 
 EXPOSE 80
 
-ENTRYPOINT ["./main"]
+ENTRYPOINT ["./web_server"]
