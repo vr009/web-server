@@ -7,6 +7,9 @@ add_executable(web_server src/main.c)
 add_subdirectory(http)
 add_subdirectory(config_parser)
 add_subdirectory(third_party/URLDecode)
+add_subdirectory(script_executor)
+
+list(APPEND EXTRA_LIBS http config_parser URLDecode script_executor)
 
 find_library(EV_LIBRARY
         NAMES libev ev evlib libev_static
@@ -17,14 +20,13 @@ find_library(EV_LIBRARY
               ${CMAKE_CURRENT_SOURCE_DIR}/third_party/libev
         )
 
-list(APPEND EXTRA_LIBS http config_parser URLDecode)
 
 if (EV_LIBRARY)
     message(${EV_LIBRARY})
     list(APPEND EXTRA_LIBS ${EV_LIBRARY})
 endif()
 
-include_directories(/usr/local/include http config_parser)
+include_directories(/usr/local/include http config_parser script_executor)
 
 target_link_libraries(web_server PUBLIC ${EXTRA_LIBS})
 

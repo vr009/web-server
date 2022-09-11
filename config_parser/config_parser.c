@@ -45,6 +45,31 @@ size_t parse_root(char * buf, struct spec_config * sp_cfg) {
 	return end_pos;
 }
 
+size_t parse_script_path(char * buf, struct spec_config * sp_cfg) {
+	char * start = strstr(buf, "script");
+	if (start == NULL) {
+		return 0;
+	}
+	if (start + strlen("script") <= buf + strlen(buf)) {
+		char * pos1 = start + strlen("script") + 1;
+		start += strlen("script") + 1;
+		while (strcmp(start, " ") == 0) {
+			start++;
+		}
+		pos1 = start;
+		while (strcmp(start, " ") != 0 && start + 1 != buf + strlen(buf) + 1) {
+			start++;
+		}
+		char * pos2 = start;
+		size_t name_size = pos2 - pos1;
+		char * res = calloc(name_size, sizeof(char));
+		strncpy(res, pos1, name_size);
+		sp_cfg->script_path = res;
+		return 1;
+	}
+	return 0;
+}
+
 struct spec_config * parse_spec(char * spec_path, struct spec_config * sp_cfg){
 	FILE * f = fopen(spec_path, "r+");
 	if (f == NULL) {
@@ -71,6 +96,12 @@ struct spec_config * parse_spec(char * spec_path, struct spec_config * sp_cfg){
 		return sp_cfg;
 	}
 	res = parse_root(buf, sp_cfg);
+	if (res == 0) {
+		fclose(f);
+		return sp_cfg;
+	}
+
+	res = parse_script_path(buf, sp_cfg);
 	if (res == 0) {
 		fclose(f);
 		return sp_cfg;

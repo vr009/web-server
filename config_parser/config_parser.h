@@ -4,6 +4,7 @@
 struct spec_config {
 	int cpus;
 	char * root;
+	char * script_path;
 };
 
 struct spec_config * parse_spec(char * spec_path, struct spec_config * sp_cfg);
