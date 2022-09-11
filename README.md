@@ -33,3 +33,8 @@ cpu_limit: 4
 document_root: /var/www/html
 script: hello.lua
 ```
+
+## Features
+- lua scripts support
+- yaml-based configuration
+- static content distribution]
