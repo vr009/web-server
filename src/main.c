@@ -19,6 +19,7 @@
 #include "ev.h"
 #include "http.h"
 #include "config_parser.h"
+#include "script_executor.h"
 
 int * pids;
 
@@ -188,6 +189,15 @@ int main(int argc, char *argv[]) {
 	} else {
 		parse_spec("/etc/httpd.conf", cfg);
 	}
+
+	if (cfg->script_path != NULL || strcmp(cfg->script_path, "") == 0) {
+		int res = execute_script(cfg->script_path);
+		if (res != 0) {
+			fprintf(stderr, "failed to run the script: %s", cfg->script_path);
+			return 1;
+		}
+	}
+
 	limit = cfg->cpus < max_possible_cpus ? cfg->cpus : max_possible_cpus;
 	if (limit == 0) {
 		limit = max_possible_cpus;
