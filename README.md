@@ -17,11 +17,19 @@ $ docker run -p 80:80 web_server
 
 ## Server configuration
 
-Added support of simple configuration files. It is possible to set count of used CPU's, lua script file and root of static files.
-Example:
-
+Web_server supports two types of configuration files plain text and yaml format. 
+It is possible to set count of used CPU's, lua script file and root of static files.
+Examples.
+Plain text config:
 ```
 cpu_limit 4       # maximum CPU count to use
 document_root /var/www/html
 script hello.lua
+```
+
+YAML foramt config:
+```yaml
+cpu_limit: 4
+document_root: /var/www/html
+script: hello.lua
 ```
