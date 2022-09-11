@@ -20,6 +20,7 @@
 #include "http.h"
 #include "config_parser.h"
 #include "script_executor.h"
+#include "config.h"
 
 int * pids;
 
@@ -189,6 +190,8 @@ int main(int argc, char *argv[]) {
 	} else {
 		parse_spec("/etc/httpd.conf", cfg);
 	}
+
+	fprintf(stdout, "%s\n%s\n", cfg->root, cfg->script_path);
 
 	if (cfg->script_path != NULL || strcmp(cfg->script_path, "") == 0) {
 		int res = execute_script(cfg->script_path);
