@@ -37,4 +37,4 @@ script: hello.lua
 ## Features
 - lua scripts support
 - yaml-based configuration
-- static content distribution]
+- static content transfering
