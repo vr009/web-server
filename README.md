@@ -2,7 +2,7 @@
 
 ## Motivation
 
-This an educational project.
+This an educational project. Http2 and higher is not supported.
 
 ## Architcture
 
